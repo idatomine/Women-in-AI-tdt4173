@@ -3,17 +3,3 @@
 __pycache__/
 .ipynb_checkpoints/
 .DS_Store
-
-# Competition data: not redistributable, download from Kaggle
-data/
-sample_submission.csv
-prediction_mapping.csv
-
-# Large caches and outputs
-*.npy
-*.parquet
-features/
-experiments/*/
-
-# Licensed paper (IEEE, NTNU licence only): cite DOI 10.1109/EEM68581.2026.11589730 instead
-An_Evaluation_of_Neural_Network_Architectures*.pdf
