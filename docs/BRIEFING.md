@@ -4,8 +4,19 @@ Handoff document for whoever (human or Claude session) trains and tunes the mode
 summarises what is **verified in the data** (✅), what comes from **research** (📚, see
 `research/0*.md` for sources), and what is still a **hypothesis** (❓).
 
-Status 2026-10-15: Part 1 (understanding + direction) done. No final pipeline exists yet;
+Status 2026-10-16: Part 1 (understanding + direction) done. No final pipeline exists yet;
 `analysis/` holds throwaway EDA/baseline scripts only.
+
+**Revised 2026-10-16.** The main track is now **relaxed-MIP/LP features + GBDT** (§4.0).
+Other changes:
+- the NN assessment is corrected (§4);
+- validation adds 2019 as fold D, with 2018 as a locked holdout (§5);
+- the oracle numbers are reconciled (§3);
+- the autonomous loop is replaced by a lean manual plan with a timeline (§7).
+
+**Deadlines:**
+- VTs are frozen after **2026-10-18**.
+- Project deadline: **2026-11-08 22:00** (strict; late = −30 points).
 
 ---
 
@@ -98,8 +109,13 @@ comes only from start/stop costs. Full details: `research/03_hydropower_domain_a
 ### 2.4 Market regime ✅
 Mean price per year: 2015–19 20–43 EUR/MWh; 2020 9; 2021 76; **2022 211**; test 2023 ≈ 79,
 2024 ≈ 50. Test has about 380 negative-price hours versus about 10 in all of train.
-**Use relative features** (price ÷ water value, price minus water value scaled by the week's
-price level, within-week ranks and z-scores), not raw EUR.
+**Use relative features** (price minus water value scaled by the week's price level,
+within-week ranks and z-scores), not raw EUR.
+
+⚠️ **Prefer scaled differences over ratios.** Price ÷ water value blows up when the water
+value is near 0 (2020, and scarcity coef ≈ 0 at full reservoirs) and flips sign with
+negative prices (test). If ratios are used, clip them, and always keep the
+difference ÷ week-level version alongside.
 
 ## 3. What we measured (EDA baselines, `analysis/`) ✅
 
@@ -115,27 +131,99 @@ removed (7-day embargo).
 | + physics features: price vs +7 d wv, scarcity coef, profitable-hour share (`baseline_v2.py`) | **0.970** | **0.964** | |
 | Oracle that knows each unit-week's true ON fraction (level only) | 0.960 | 0.971 | |
 
+An independent re-implementation (forward-only folds, per-unit LightGBM, ~115 generic
+features, water value as the *average* of start and +7 d) scored **0.941 (2021) / 0.927
+(2022)**. That confirms that using the +7 d value directly, not a blend, is worth about
++0.03.
+
+Two more checks from the same session:
+- Averaging predictions over overlapping cases **hurts**: 0.934 → 0.926 at decay 0.5, and
+  → 0.897 with equal weights.
+- Future observed volumes (forbidden anyway) carry almost no signal, with single-feature
+  AUC ≈ 0.45–0.60.
+
 Takeaways:
 1. **Domain features matter far more than model choice:** +0.06 AUC from physics features
    alone.
-2. **Getting each unit's weekly ON level right** (how much a unit runs in a given week) is
-   about as important as timing within the week. Both need work.
+2. **Weekly level and within-week timing both matter, and timing is not a detail.**
+   Knowing each unit-week's true ON fraction alone gives only 0.960–0.971 (measured twice,
+   independently). So even a perfect level model caps far below the 0.99+ on the LB, and
+   the remaining gap is hour-level timing. This is what optimisation features (DP/LP) supply.
+   - ⚠️ `research/02` quotes "oracle level ≈ 0.997" from a peer repo. That contradicts our
+     measurement. It is most likely level + the model's within-week ranking, not level
+     alone. Trust our number.
 3. **Validation years differ by about 0.01–0.05.** Never trust a single holdout year.
 
-📚 Two other teams in this same course have public GitHub repos and self-report public-LB
-scores of about 0.988–0.991 with per-unit XGBoost/LightGBM plus engineered features, and about
-**0.9957** with features from an **LP relaxation** of the watercourse. Treat these as an
-indication of what is achievable. **Check the course rules before looking at their code;
-copying is likely not allowed.** Details: `research/02_kaggle_and_modeling_techniques.md`.
+📚 **Leaderboard picture (public LB, 2026-10-16):** #1 is 0.99768, the top 10 are all
+≥ 0.9961, #25 is 0.9948 and #50 is about 0.990.
+- The leader ([67]) told us verbally that they solve a **relaxed MIP of the watercourse** and
+  feed the solution into LightGBM/XGBoost (see §4.0).
+- None of the top-10 teams has a public repo for this task (checked by Kaggle member name
+  and team name).
+- Public peer repos self-report about 0.988–0.991 with per-unit XGBoost/LightGBM plus
+  engineered features, and **0.9957** with LP-relaxation features ([119]).
+- Never copy code from other teams. Use these numbers only as an indication of what is
+  achievable. Details: `research/02_kaggle_and_modeling_techniques.md`.
 
 ## 4. Recommended direction
 
-**Core model: gradient-boosted trees in long format (one row = case × unit × hour), with
-strong physics features.** Neural nets are a secondary, diversity member only.
+### 4.0 Priority update (2026-10-16): relaxed-MIP/LP features are the main track
 
-Why not neural nets as the core:
-- With about 2.9k cases, trees win on tabular data (Grinsztajn 2022).
-- A peer team's TCN reached only 0.927.
+**Evidence:**
+- **The LB leader 📚 (verbal, not verified in code):** [67] SIX-SEVEN (0.99768) solves a
+  **relaxed MIP** of the watercourse and feeds its solution into LightGBM/XGBoost.
+- **SINTEF's paper:** the relaxed solution alone (No_MIP) gives micro-F1 0.9735 at 168 h.
+  NNs that also see the No_MIP output only reach 0.9778, and that is with a random split,
+  so it is optimistic.
+- **The [119] peer repo** (0.9957 public) reports LP features as its biggest gain.
+- **Our oracle numbers (§3):** within-week timing is the remaining gap, and an optimiser
+  supplies exactly that.
+
+**Conclusion:** the score comes from the optimisation features, not the model type.
+- §4.5 Level 2 moves from "later" to **the main track**.
+- Level 1 (per-plant DP) is a quick stepping stone (≤ 1 day) that also gives a feature in
+  its own right. It is not the destination.
+
+**What "relaxed" means:** SHOP solves a MIP in which each unit's on/off status is binary.
+Relaxing it lets on/off take any value in [0, 1], which turns the problem into an LP that
+solves in well under a second per case.
+- The LP solution is *almost* right: a unit that runs in the MIP produces in the LP, and a
+  unit that is off produces about 0.
+- The GBDT then learns the corrections. For example, the LP over-commits: No_MIP has
+  recall 0.995 and precision 0.953.
+
+**Build order (risk-staged):**
+1. **Level 1 DP** (§4.5): half a day. Measure it.
+2. **LP for Tokke + Vinje only**: 7 of 14 units, coupled via the tiny Vinjevatn (9.4 Mm³).
+   Reservoirs: Vaamarvatn, Vinjevatn and Bandak.
+   - **Sanity check:** the AUC of LP production ÷ p_max against the labels for these 7
+     units, per year. It must be clearly above the single rule (0.59), and ideally above
+     the DP. If not, fix the LP before adding units.
+3. **Full cascade** following the YAML `connections`, plus min-flow / min-volume.
+4. Optional: a relaxed start-cost term, to capture the persistence SHOP gets from start
+   costs.
+5. Optional: a real MILP (Level 3) only if Level 2 plateaus.
+
+**Evaluation:** for every fold, report three numbers:
+- (a) the LP rule alone;
+- (b) GBDT without LP features;
+- (c) GBDT with LP features.
+
+Keep LP features only if (c) beats (b) under §5b.
+
+**Runtime check:** the LP over all 3,647 cases must fit well inside the short notebook's
+12 h / 4-core limit. Measure seconds per case on day one.
+
+### 4.0b Core model and the role of neural nets
+
+**Core model: gradient-boosted trees (LightGBM/XGBoost) on top of physics + LP features.**
+The leader and both public peer repos use GBDTs.
+
+The NN question, assessed fairly:
+- With about 2.9k cases, trees are the safe default on tabular data (Grinsztajn 2022).
+- A peer team's TCN reached only 0.927. ⚠️ That is *not* evidence against NNs as such: a
+  GBDT with generic features scores about the same (0.927–0.941, §3). It is evidence
+  against models without physics features.
 - SINTEF's own paper (Barjaktarevic et al., EEM 2026, DOI 10.1109/eem68581.2026.11589730)
   compared only neural nets.
   - **Abstract (verified):** "convolutional architectures exhibit the most consistent
@@ -150,16 +238,25 @@ Why not neural nets as the core:
   - The No_MIP rule over-commits (recall 0.995, precision 0.953).
   - No trees were tested.
   - **Main lesson:** a relaxed LP of the watercourse already reproduces SHOP's labels almost
-    perfectly, and the networks only add a small correction on top. **Building our own LP
-    relaxation as a feature (§4.1 #7) is the highest-value step.**
-  - ⚠️ The paper states that the complete training dataset is public:
-    *KSP InterOpt Project Open Dataset SHOP_17_15_1_Tokke_3_history*, data.sintef.no. It
-    very likely contains labels for 2023–24. **Do not download or use it** without explicit
-    written permission from the course staff; that would be test-label leakage.
+    perfectly, and the networks only add a small correction on top (+0.004 F1). The paper
+    shows *the LP* is strong. It says nothing about NN vs trees. **Building our own LP
+    relaxation as a feature (§4.0, §4.5) is the highest-value step.**
+- **Verdict:** NNs are optional. Add a small 1D-CNN over (channels × 168 h) only if time
+  allows after the LP track, and only fed the **same physics/DP/LP channels** as the
+  GBDT. Its value is as a diverse ensemble member (errors differ from per-hour trees). Keep
+  it only if it reaches about 0.97 alone and improves the blend out-of-fold.
+- ⚠️ The paper states that the complete training dataset is public:
+  *KSP InterOpt Project Open Dataset SHOP_17_15_1_Tokke_3_history*, data.sintef.no. It
+  very likely contains labels for 2023–24. **Do not download or use it** without explicit
+  written permission from the course staff; that would be test-label leakage.
 
 ### 4.1 Feature backlog, roughly in priority order
-1. Price vs the **upstream water value at +7 d**: difference scaled by the week's price
-   level, and the ratio. Add the downstream reservoir's value too (net water value).
+**#7 (relaxed optimiser) is the main track (§4.0)** and runs in parallel with #1–#6, which
+are cheap. Get #1–#4 in first: they are the base the LP features are measured against.
+
+1. Price vs the **upstream water value at +7 d**: the difference scaled by the week's price
+   level, and a clipped ratio (see §2.4). Add the downstream reservoir's value too (net
+   water value).
 2. **Scarcity coefficients:** c_start = wv_start / mean price of the case week; c_end = wv_+7 /
    mean price of the following week. Use the 9 deduplicated series.
 3. **Within-case price shape:** rank, z-score, rolling 3/6/12/24 h means, lead/lag
@@ -171,14 +268,17 @@ Why not neural nets as the core:
    min-volume floor.
 6. **Constraints:** min-flow on r_Vest_Vassdraget (likely drives **Lio**), plus
    Totak/Byrtevatn/Staavatn min-volume periods.
-7. **Relaxed-optimiser features (the biggest peer gain).** Start with a per-unit two-state
-   dynamic program over the 168 prices with the start cost, using the +7 d water value as the
-   cost of water. That gives the optimal ON/OFF path and the value gap per hour. Later, an LP
-   relaxation of the full cascade with `scipy.optimize.linprog`/HiGHS. Using topology for
-   features like these is how the "extended data" should be used, rather than our own
-   full reservoir optimisation.
+7. **Relaxed-optimiser features: the main track (§4.0, spec in §4.5).** This is the
+   biggest gain for the leader and for peers.
+   - Step 1: a per-plant DP over the 168 prices with the start cost, using the +7 d water
+     value as the cost of water. It gives the optimal path and the value gap per hour.
+   - Step 2: an LP relaxation of the cascade with `scipy.optimize.linprog`/HiGHS, Tokke +
+     Vinje first, then the full cascade.
+   - Using topology for features like these is how the "extended data" is meant to be used.
 8. **Weekly-level model:** a separate case-level model predicting each unit's weekly ON
-   fraction. Feed it out-of-fold as a feature or logit offset.
+   fraction. Feed it out-of-fold as a feature or logit offset. **Lower priority than #7.**
+   The level-only oracle caps at 0.96–0.97 (§3), and the LP already encodes level and
+   timing jointly.
 9. Unit statics: p_min, p_max, start cost, priority within the plant.
 10. Calendar: day of year, hour of day, day of week (weak but cheap).
 
@@ -187,19 +287,28 @@ Why not neural nets as the core:
   slightly better; test both.
 - XGBoost / CatBoost / LightGBM blends with several seeds. **Blend raw probabilities with
   global weights; never rank-normalise per unit** (that breaks micro-AUC).
-- **Use the plant structure.**
-  - Predict "number of units on" per plant (ordinal), then assign units by the priority order.
-  - Or post-process so that P(Vinje G2) ≤ P(Vinje G1).
+- **Use the plant structure.** It deserves a proper test; one peer attempt is not enough
+  to rule it out.
+  - The priority order is near-strict (§2.3), so the real target for Tokke and Vinje is
+    "number of units on".
+  - Model it as cumulative binaries P(n ≥ k) for k = 1…4 (Tokke) and 1…3 (Vinje).
+    P(G-k on) then follows from the priority order, and monotonicity is guaranteed by
+    construction.
+  - G2/G3 then learn from all of the plant's data instead of only their own sparse ON
+    hours.
+  - Cheap fallback: post-process so that P(Vinje G2) ≤ P(Vinje G1).
 - **Stage 2** stacking: each unit's own predictions at ±1/3/6/12/24 h plus the other units'
   predictions.
-- Temporal smoothing of predictions (rolling median/mean). Validate the window size.
+- Temporal smoothing *within* a case (a rolling mean over that case's own hours). Validate
+  the window size. Do not average *across* overlapping cases; that was measured to hurt
+  (§3).
 - Weight recent years more; test 2015–16 down-weighting.
 - k-NN over historical weeks as a cheap baseline or feature.
-- Optional: a small 1D-CNN over (14 × 168) as an ensemble member.
+- Optional, after the LP track: a small 1D-CNN with the same feature channels (§4.0b).
 
 ### 4.3 How to search features (not exhaustive combinations)
 Testing all combinations is infeasible: 30 features give about 10⁹ subsets at about 3 min per
-3-fold run. It would also overfit the validation folds, because with thousands of comparisons
+4-fold run. It would also overfit the validation folds, because with thousands of comparisons
 some win by luck. Use this instead:
 
 1. **Organise features into about 8–12 named groups**, following the §4.1 backlog: `price_shape`,
@@ -231,7 +340,8 @@ some win by luck. Use this instead:
 
 ### 4.5 Spec: our own "relaxed SHOP" as a feature generator
 Why: in the SINTEF paper the relaxed LP *alone* scores F1 0.9735, and NNs add only about
-0.004. A peer team reported LP features as their biggest gain. This is **not** a full SHOP
+0.004. A peer team reported LP features as their biggest gain, and the LB leader uses
+relaxed-MIP features (§4.0). This is **not** a full SHOP
 rebuild. It's a rough, fast approximation whose outputs become features; the ML model learns
 the corrections. It uses only the §2.0 case inputs, so it is leakage-safe.
 
@@ -250,9 +360,10 @@ the corrections. It uses only the §2.0 case inputs, so it is leakage-safe.
 - It ignores reservoir limits (no water balance). It's fine for big reservoirs and wrong when
   a reservoir is nearly full or empty. Level 2 fixes that.
 
-**Level 2: one LP per case over the whole cascade (about 1 day; `scipy.optimize.linprog`,
-method="highs" or `highspy`; about 5k variables, well under 1 s per case, so all 3,647 cases
-take minutes)**
+**Level 2 (MAIN TRACK): one LP per case over the cascade (about 1–2 days;
+`scipy.optimize.linprog`, method="highs" or `highspy`; about 5k variables, well under 1 s per
+case, so all 3,647 cases take minutes).** Build it for **Tokke + Vinje first** and pass the
+sanity check (§4.0) before extending it to the full cascade.
 
 - **Variables** (per hour t):
   - production per plant: 0 ≤ P ≤ n_units × p_max (binaries relaxed);
@@ -290,7 +401,7 @@ Pitfalls:
 - **Tiny reservoirs** (Vinjevatn, Vatjern, Hyljelihyl) make the LP stiff; use hourly
   resolution.
 - **Cache** all outputs to `features/lp_*.parquet` once; never recompute inside the
-  experiment loop.
+  experiments.
 
 **Deprioritise:** time-series foundation models (Chronos, TimesFM: we are not forecasting),
 large Transformers, per-unit calibration, class weights, and averaging predictions across
@@ -321,19 +432,24 @@ overlapping cases (the labels disagree on 12%).
   | A | 2020 (very low prices) | 2015-01-01 … 2019-12-25 and 2021-01-08 … 2022-12-31 |
   | B | 2021 (rising prices) | 2015-01-01 … 2020-12-25 and 2022-01-08 … 2022-12-31 |
   | C | 2022 (crisis prices) | 2015-01-01 … 2021-12-25 |
+  | D | 2019 (normal prices) | 2015-01-01 … 2018-12-25 and 2020-01-08 … 2022-12-31 |
 
-  The three years are deliberately very different regimes, which tests generalisation.
-  **Score = mean of A, B, C**, and always report each fold too.
+  **Score = mean of A–D**, and always report each fold too.
+
+  Why D was added: A–C are all extreme regimes, and none of them resembles the test period
+  (2023 ≈ 79 and 2024 ≈ 50 EUR/MWh, with negative-price hours). The 2022 fold in
+  particular can dominate decisions. A "normal" year keeps the average from steering
+  towards what only helps in crisis or near-zero-price years.
 - **Secondary check (forward-only, "expanding window"):** train only on years *before* the
   validation year (2015–19 → 2020, 2015–20 → 2021, 2015–21 → 2022). This mimics the real
   situation (train on the past, predict 2023–24). Run it for shortlisted candidates, not every
   experiment.
-- **Optional extra folds:** 2018 and 2019, for a 5-fold check on final candidates (more
-  stable, slower).
+- **Locked holdout: 2018.** It is never used while choosing features or settings. Score it
+  once, on the 2–3 final candidates only, as an honest check for overfitting the A–D folds.
 - **Final model:** after choosing settings with the folds, retrain on **all of 2015–2022**
   with the same settings. For early-stopped GBDTs, use about the mean best iteration from the
   folds × 1.1, since there is more data.
-  - The fold models exist only to *score* settings. The "mean of A, B, C" is an average of
+  - The fold models exist only to *score* settings. The "mean of A–D" is an average of
     **scores**, not of models.
   - Averaging *predictions* happens only for ensembles: several seeds, or different model
     types (LGBM/XGB/CNN), each retrained on all of 2015–2022. Combine them as a weighted
@@ -343,11 +459,12 @@ overlapping cases (the labels disagree on 12%).
 - Treat differences < 0.001–0.002 as noise; measure seed variance early.
 - **Early stopping:** on an inner time-tail of the training folds, never on the validation
   year itself.
-- **Locked holdout:** if running a long autonomous loop, keep one extra year (e.g. 2018, or the
-  second half of 2022) that the loop never sees, and score candidates on it only at the end.
-  Over a 24 h search the agent *will* overfit its validation folds (Meta AIRA findings).
 - **Kaggle submissions:** humans choose them, a few per day, as a sanity check against the
   public LB (the 2023–24 regime differs from every validation year).
+  - **Submit the baseline_v2 equivalent early (day 1).** That gives one (local CV, public
+    LB) pair to calibrate against.
+  - Then submit after each big step (DP, LP), so you can see whether local gains carry over
+    to 2023–24.
 
 ## 5b. Model selection and targets (how to decide what is "better")
 
@@ -365,19 +482,24 @@ decide must therefore generalise, not chase a number.
 - (a)–(c) are forbidden by §5/§6. (d) is controlled by the rules below.
 
 **Acceptance rule for a change** (feature, model, parameter):
-1. The mean leave-one-year-out AUC (folds A–C) improves by **≥ 0.001**, **and**
-2. it improves (or is within noise) on **at least 2 of 3** folds; no fold may drop
+1. The mean leave-one-year-out AUC (folds A–D) improves by **≥ 0.001**, **and**
+2. it improves (or is within noise) on **at least 3 of 4** folds; no fold may drop
    > 0.002, **and**
 3. it is not a narrow trick. Prefer changes with a physical or economic reason (e.g. a
    water-value margin) over hyperparameter fiddling. Among equal scores, choose the simpler
    model.
 
 **Targets (realistic, honest):**
-- Local mean A–C ≈ **0.975–0.985** is a strong, honest result. Baseline v2 is about 0.967.
+- Local mean A–D ≈ **0.975–0.985** is a strong, honest result. Baseline v2 is about 0.967.
   The 2022 fold will likely stay the lowest.
 - Public LB will probably be somewhat **higher** than local CV, since 2023–24 prices are
-  closer to normal than 2022. Peers report about 0.99; 0.995+ came with LP-relaxation
-  features.
+  closer to normal than 2022.
+- LB reference points (2026-10-16): #50 ≈ 0.990, #25 ≈ 0.995, the top 10 ≥ 0.996, and the
+  leader 0.9977, with relaxed-MIP features.
+- Expect: physics features alone give about 0.99 public. Reaching 0.995+ requires the LP
+  track.
+- Base points depend on how many VTs we beat, and the VTs are frozen after 2026-10-18.
+  Watch where the VT entries sit on the LB.
 - Do **not** set a leaderboard number as the goal. The goal is the highest and most
   *stable* local CV.
 
@@ -390,9 +512,13 @@ decide must therefore generalise, not chase a number.
   time, the public LB is an even weaker guide for the private score.
 
 **Final submissions** (Kaggle usually lets you pick 2):
-1. The best mean CV (A–C) that also holds up in the forward-only check.
+1. The best mean CV (A–D) that also holds up in the forward-only check.
 2. A robust choice: a simple multi-seed blend of the top 2–3 diverse models (e.g. LGBM +
    XGB + optional CNN), even if its CV is slightly below #1.
+
+Pick two that **differ**: two near-identical models fail on the same cases, which wastes
+the second pick as insurance. Both need their own short notebook that reproduces them from
+raw data (fixed seeds, ≤ 12 h on 4 cores / 32 GB).
 
 Never pick a submission because it has the highest public LB alone.
 
@@ -412,54 +538,66 @@ Never pick a submission because it has the highest public LB alone.
       when iterating. The machine is an M3 with 16 GB RAM, so per-unit models (~490k rows
       each) are lighter.
 - [ ] The base conda environment is broken (NumPy 1/2 mix). Use the project venv `.venv/`.
+- [ ] Ratio features (price ÷ water value) blow up near zero and flip with negative prices.
+      Clip them and keep scaled-difference versions (§2.4).
+- [ ] Don't average predictions across overlapping cases. It was measured to hurt (§3).
+- [ ] The LP must use only §2.0 inputs: start-day volume, the +7 d water value, and prices
+      and inflows inside the case. Assert this in a unit test, like the feature code (§4.4).
 
-## 7. Plan for the long autonomous run (Part 2)
+## 7. Plan and timeline (Part 2)
 
-See `research/04_autonomous_experiment_loop.md` for sources and a full scaffold. Summary:
+**Decision (2026-10-16): no long autonomous loop.** The earlier plan (an unattended 24 h
+`/loop` with hooks, see `research/04_autonomous_experiment_loop.md`) is dropped:
+- It costs the most usage, and we have a usage budget to protect.
+- It overfits the validation folds by construction: with thousands of comparisons, some win
+  by luck.
+- The gains we need come from 3–4 well-defined features (DP, LP), not from a broad search.
 
-1. **A human sets up the harness first** (about 1–2 h, supervised):
-   - `harness/folds.py` + `harness/evaluate.py` (frozen) and a timeout wrapper.
-   - `experiments/leaderboard.csv`, written only by the evaluator, and `experiments/journal.md`.
-   - `src/` is the only directory the agent edits.
-   - Git init and one commit per experiment.
-2. Protect the harness:
-   - Use a `PreToolUse` hook that blocks edits to `harness/` and `data/`, plus the sandbox.
-     Prompt text alone is not enough; agents have edited their own timeouts.
-   - Use `acceptEdits` or auto mode with an explicit allow list. ⚠️ `bypassPermissions` is
-     only for throwaway containers or VMs.
-3. Choose a driver:
-   - `/loop` with `.claude/loop.md` (re-read every iteration).
-   - Or, more robust, a shell loop around `claude -p` so each iteration starts with a fresh
-     context and all state lives on disk.
-   - On Max, expect usage-limit pauses (5-hour windows plus weekly caps), so the driver must
-     back off and retry.
-   - Keep the Mac awake with `caffeinate -i`.
-   - Verify CLI flags against `claude --help` before relying on them.
-4. Rough schedule:
-   - 0–3 h: diverse baselines.
-   - 3–18 h: one-hypothesis-per-experiment improvements, working down the §4.1 backlog.
-   - 18–22 h: ensembling and multi-seed runs.
-   - Then a human scores the locked holdout and makes the final submissions.
+Work instead as **targeted manual experiments**: one hypothesis, one run on folds A–D, one
+line in `experiments/journal.md` (date, change, per-fold AUC, keep/drop and why).
+
+**Timeline** (deadline 2026-11-08 22:00; VTs frozen after 2026-10-18):
+
+| Dates | Work | Done when |
+|---|---|---|
+| Oct 16–18 | Harness: folds A–D + locked 2018, `kaggle_metric.score`, journal. Reproduce baseline_v2. Backlog #1–#6. **First Kaggle submission.** | One (CV, public LB) pair |
+| Oct 19–21 | Level 1 DP features (§4.5). Submit. | DP gain measured on A–D |
+| Oct 22–28 | Level 2 LP: Tokke + Vinje, sanity check, then the full cascade. Cache features. Submit. | LP rule AUC per unit; GBDT with vs without LP |
+| Oct 29–Nov 1 | Models on the final features: per-unit LightGBM vs XGBoost, the plant-count variant (§4.2), multi-seed blend. Optional CNN. | Two candidate submissions |
+| Nov 1–7 | Report (EDA, ≥ 2 model types, feature engineering, interpretation/SHAP), two short notebooks, a clean-environment reproducibility run, the locked 2018 check, final picks. | All four −3 items covered; both notebooks reproduce |
+| Nov 8 | Buffer only. Upload to Canvas well before 22:00. | |
+
+**Report material is collected as you go:** EDA figures from the harness week, the
+per-step score table from the journal, and SHAP on the final model. The four −3 deductions
+are the cheapest points in the project.
+
+**Saving usage when working with Claude:**
+- Use one task per session, and point it to this file.
+- Keep all state on disk (journal, cached features), not in the chat.
+- Run heavy training locally and paste only the results.
 
 ### Useful Claude Code skills
-- **Built-in:**
-  - `/loop`: the self-paced experiment loop.
-  - `/schedule`: cloud routines. These get a fresh git clone without local data, so they're a
-    poor fit unless the data is in the repo.
-  - `/code-review` or `/simplify`: periodic review of `src/` for leakage bugs.
-  - `dataviz`: diagnostic plots.
-  - `update-config`: hooks and permissions for unattended runs.
-  - `fewer-permission-prompts`: build an allow list after a supervised dry run.
-- **Worth creating with `skill-creator`** (project skills in `.claude/skills/`):
-  - `run-experiment`: the exact steps to run, log, keep or revert.
-  - `check-submission`: format validation plus a fake-solution score.
-  - `leakage-audit`: a checklist from §5–6 that runs against a diff.
+- `/code-review` or `/simplify`: periodic review of `src/` for leakage bugs.
+- `dataviz`: diagnostic plots and report figures.
+- **Worth creating with `skill-creator`:**
+  - `check-submission`: format validation plus a fake-solution score;
+  - `leakage-audit`: the §5–6 checklist run against a diff.
 
 ## 8. Open questions
 - ❓ What drives Lio (the min-flow constraint on r_Vest_Vassdraget?) and Haukeli (a tiny unit,
   close to run-of-river)? These are the weakest units at about 0.90–0.92.
 - ❓ Does the cheap DP/LP relaxation reproduce SHOP well enough to be a strong feature?
-  The peer evidence says yes.
+  The peer evidence and the LB leader say yes. Answer it with the Tokke + Vinje sanity check
+  (§4.0).
+- ❓ Is a linear production function (P = k × Q at a fixed head) close enough, or is a
+  head-dependent piecewise version needed? Try a fixed head first.
+- ❓ Which are stronger as features: the LP duals (the hourly water value) or the primal
+  production?
+- ❓ Does the plant-count target (cumulative P(n ≥ k)) beat 14 separate unit models
+  (§4.2)?
+- ❓ Which leaderboard entries are the VTs, and how many are there? This decides how many
+  base points each step is worth.
 - ❓ How do the 2023–24 public-LB scores relate to our CV folds? Calibrate with 1–2 early
   submissions.
-- ❓ Course rules on using other teams' public repos and external SINTEF data.
+- ❓ Course rules on using other teams' public repos and external SINTEF data, and whether
+  the public/private split is random or by time. **Ask the course staff.**
