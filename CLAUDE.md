@@ -41,3 +41,6 @@ facts, the validation protocol, the feature backlog and the pitfalls.
    `sample_submission.csv` order). The plant name `Vesle Kjela` contains a space.
 7. Before any Kaggle upload, check the submission against `sample_submission.csv`: 725 rows,
    identical columns, values in [0, 1], no NaN.
+8. **Never overwrite the raw data** (`data/`, `sample_submission.csv`,
+   `prediction_mapping.csv`). To change a data file, make a copy and edit the copy.
+   Write derived or cleaned data to new files outside `data/`.
