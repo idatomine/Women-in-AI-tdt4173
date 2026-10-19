@@ -1,0 +1,40 @@
+# Experiment 007: exp 002 + the hydro_pressure group (BRIEFING §4.1 #5).
+# Hypothesis: a nearly full reservoir facing high inflow must release water (run) or
+# spill, and a nearly full downstream reservoir limits releases. The margin doesn't see
+# this; fill and inflow are in exp 002 only separately.
+
+name: exp_007_hydro_pressure
+change: exp 002 + hydro_pressure (week inflow ÷ free space, upstream and downstream)
+compare_to: exp_002_no_raw_eur
+
+features:            # same groups as exp 001
+  - price_shape
+  - calendar
+  - water_value
+  - hydro
+  - unit_static
+  - wv_margin
+  - scarcity
+  - case_economics
+  - hydro_pressure
+
+drop_features:       # single features removed from the groups above
+  - price
+  - price_wkmean
+  - wv_up_end
+  - wv_up_start
+  - wv_dn_end
+  - net_wv
+
+model:               # unchanged from exp 001
+  type: lightgbm
+  row_share: 0.35
+  seed: 0
+  params:
+    n_estimators: 800
+    learning_rate: 0.05
+    num_leaves: 127
+    min_child_samples: 200
+    subsample: 0.8
+    subsample_freq: 1
+    colsample_bytree: 0.8

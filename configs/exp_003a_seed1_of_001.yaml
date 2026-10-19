@@ -1,0 +1,29 @@
+# Noise check: same as exp_001_baseline_v2, only the random seeds changed (row subsample + LightGBM).
+
+name: exp_003a_seed1_of_001
+change: exp 001 with seed 1 (noise check)
+compare_to: exp_001_baseline_v2
+
+features:            # feature groups, one module each in src/features/
+  - price_shape
+  - calendar
+  - water_value
+  - hydro
+  - unit_static
+  - wv_margin
+  - scarcity
+  - case_economics
+
+model:
+  type: lightgbm
+  row_share: 0.35    # share of training rows used, to fit in 16 GB RAM
+  seed: 1            # seed for the row subsample
+  params:            # passed straight to lightgbm.LGBMClassifier
+    n_estimators: 800
+    learning_rate: 0.05
+    num_leaves: 127
+    min_child_samples: 200
+    subsample: 0.8
+    subsample_freq: 1
+    colsample_bytree: 0.8
+    random_state: 1

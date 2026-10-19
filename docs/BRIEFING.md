@@ -167,6 +167,22 @@ ranked across all units and hours together (micro-AUC):
 - An earlier version of this table listed only the net rule (0.592) as "the single rule",
   which understated the baseline. Use the upstream rule as the bar to beat.
 
+**Harness results (2026-10-19, details in `experiments/journal.md`).** Mean AUC over folds
+A–D (2020, 2021, 2022, 2019):
+- exp 001, baseline_v2 in the harness: 0.9593. Seed noise: ≤ 0.0017 per fold, ≤ 0.0008 on
+  the mean.
+- exp 002, raw EUR levels removed: 0.9642 (2020 +0.016). Kept.
+- exp 007, + spill pressure: 0.9652. Kept.
+- exp 008, + per-plant DP (§4.5 Level 1): 0.9663. Kept; DP regret is the top feature by gain.
+- **exp 009, + Tokke–Vinje coupling: 0.9789.** Kept. When Vinje G1 runs, Tokke G1 runs 99.5%
+  of the time (Vinje's water passes through the tiny Vinjevatn), otherwise 37%. Tokke
+  G2–G4 gained 0.02–0.08.
+- No gain: margin in neighbouring hours (005), profitable-block lengths (006), one model per
+  unit (010, −0.0016). Cascade coupling for the other plants (011): Hogga +0.02–0.04 on all
+  folds, pooled within noise; pending.
+- Lesson: re-expressing the margin adds nothing the trees can't combine. Gains come from new
+  information, i.e. the physics (DP, coupling, reservoirs). That supports the LP track.
+
 Two more checks from the same session:
 - Averaging predictions over overlapping cases **hurts**: 0.934 → 0.926 at decay 0.5, and
   → 0.897 with equal weights.

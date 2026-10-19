@@ -19,6 +19,20 @@ facts, the validation protocol, the feature backlog and the pitfalls.
 - `prediction_mapping.csv`: the 725 test cases (Run No 2923–3647, 2023-01-01 → 2024-12-25).
 - `sample_submission.csv`: the required column order (`Run No` + 2352 label columns).
 - `kaggle_metric.py`: the exact metric (micro ROC-AUC). Always evaluate with `score()`.
+- `README.md`: how the harness works, written for the team. Keep it in sync when the
+  harness changes.
+- `src/`: the experiment harness.
+  - `data.py`: all 3647 cases (train first, then test) and the input lookups.
+  - `cv.py`: folds, embargo, official scoring and the acceptance rule. **Frozen.**
+  - `features/`: one module per feature group, cached to `features/` (not in git).
+  - `models.py`: model wrappers; add XGBoost etc. here.
+  - `run.py`: runs a config on folds A–D and logs it.
+  - `submit.py`: trains on 2015–2022 and writes a checked submission to `submissions/`.
+- `configs/`: one YAML per experiment (feature groups on/off, model settings).
+- `experiments/journal.md`: one row per run, auto-appended; Decision and Public LB filled
+  by hand. `experiments/results.csv` is the machine-readable log.
+- Run: `.venv/bin/python -m src.run configs/<exp>.yaml [--folds C] [--holdout]`, then
+  `.venv/bin/python -m src.submit configs/<exp>.yaml`; or `experiments/run_experiments.ipynb`.
 - `analysis/`: EDA notebook and throwaway baseline scripts (`common.py` holds their shared
   loading/split/training code), not the pipeline.
 - `research/01–04`: literature, Kaggle/peer, domain/SHOP, and autonomous-loop research,

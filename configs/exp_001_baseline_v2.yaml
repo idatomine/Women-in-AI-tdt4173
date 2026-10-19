@@ -1,0 +1,33 @@
+# Experiment 001: analysis/baseline_v2.py ported to the harness (same 31 features and
+# settings), scored on folds A–D. The reference that later experiments compare against.
+#
+# To make a new experiment: copy this file to exp_002_<short_name>.yaml, change `name`
+# and `change`, set `compare_to` to the experiment you're improving on, and change ONE
+# thing (usually one line under `features:`).
+
+name: exp_001_baseline_v2
+change: baseline_v2 (31 features, pooled LightGBM) ported to the harness
+compare_to: null
+
+features:            # feature groups, one module each in src/features/
+  - price_shape
+  - calendar
+  - water_value
+  - hydro
+  - unit_static
+  - wv_margin
+  - scarcity
+  - case_economics
+
+model:
+  type: lightgbm
+  row_share: 0.35    # share of training rows used, to fit in 16 GB RAM
+  seed: 0            # seed for the row subsample
+  params:            # passed straight to lightgbm.LGBMClassifier
+    n_estimators: 800
+    learning_rate: 0.05
+    num_leaves: 127
+    min_child_samples: 200
+    subsample: 0.8
+    subsample_freq: 1
+    colsample_bytree: 0.8
