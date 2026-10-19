@@ -1,0 +1,41 @@
+# Experiment 014c: ablation (BRIEFING §4.3 step 3). exp 013 without hydro_pressure.
+# Question: is it still needed now that the LP sees reservoir fill and inflow directly? If the score doesn't drop
+# beyond noise, remove it (simpler wins).
+
+name: exp_014c_without_hydro_pressure
+change: "ablation: exp 013 without hydro_pressure"
+compare_to: exp_013_relaxed_lp
+
+features:            # same groups as exp 001
+  - price_shape
+  - calendar
+  - water_value
+  - hydro
+  - unit_static
+  - wv_margin
+  - scarcity
+  - case_economics
+  - relaxed_dp
+  - tokke_vinje
+  - relaxed_lp
+
+drop_features:       # single features removed from the groups above
+  - price
+  - price_wkmean
+  - wv_up_end
+  - wv_up_start
+  - wv_dn_end
+  - net_wv
+
+model:               # unchanged from exp 001
+  type: lightgbm
+  row_share: 0.35
+  seed: 0
+  params:
+    n_estimators: 800
+    learning_rate: 0.05
+    num_leaves: 127
+    min_child_samples: 200
+    subsample: 0.8
+    subsample_freq: 1
+    colsample_bytree: 0.8

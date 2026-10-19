@@ -1,0 +1,42 @@
+# Experiment 012: the same features as exp 009, but XGBoost instead of LightGBM.
+# Question: is LightGBM actually the better choice here? XGBoost is also needed as the
+# report's second predictor type (BRIEFING §4.0b) and for a final blend.
+
+name: exp_012_xgboost
+change: "exp 009 with XGBoost instead of LightGBM (same features, matched settings)"
+compare_to: exp_009_tokke_vinje
+
+features:            # same groups as exp 001
+  - price_shape
+  - calendar
+  - water_value
+  - hydro
+  - unit_static
+  - wv_margin
+  - scarcity
+  - case_economics
+  - hydro_pressure
+  - relaxed_dp
+  - tokke_vinje
+
+drop_features:       # single features removed from the groups above
+  - price
+  - price_wkmean
+  - wv_up_end
+  - wv_up_start
+  - wv_dn_end
+  - net_wv
+
+model:
+  type: xgboost
+  row_share: 0.35
+  seed: 0
+  params:            # passed straight to xgboost.XGBClassifier; matched to exp 009's LightGBM
+    n_estimators: 800
+    learning_rate: 0.05
+    grow_policy: lossguide   # leaf-wise like LightGBM
+    max_leaves: 127
+    max_depth: 0
+    min_child_weight: 50     # ≈ LightGBM's min_child_samples 200 (hessian ≤ 0.25 per row)
+    subsample: 0.8
+    colsample_bytree: 0.8

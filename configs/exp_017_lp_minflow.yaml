@@ -1,0 +1,41 @@
+# Experiment 017: exp 014c, but the LP includes the six min-flow constraints.
+# Sanity check (every 6th train case): LP 'Lio on' AUC 0.853 → 0.955, other units unchanged.
+# Hypothesis: the min flow on r_Vest_Vassdraget drives Lio (BRIEFING §8 open question).
+
+name: exp_017_lp_minflow
+change: "exp 014c with the LP min-flow variant (relaxed_lp_minflow instead of relaxed_lp)"
+compare_to: exp_014c_without_hydro_pressure
+
+features:            # same groups as exp 001
+  - price_shape
+  - calendar
+  - water_value
+  - hydro
+  - unit_static
+  - wv_margin
+  - scarcity
+  - case_economics
+  - relaxed_dp
+  - tokke_vinje
+  - relaxed_lp_minflow
+
+drop_features:       # single features removed from the groups above
+  - price
+  - price_wkmean
+  - wv_up_end
+  - wv_up_start
+  - wv_dn_end
+  - net_wv
+
+model:               # unchanged from exp 001
+  type: lightgbm
+  row_share: 0.35
+  seed: 0
+  params:
+    n_estimators: 800
+    learning_rate: 0.05
+    num_leaves: 127
+    min_child_samples: 200
+    subsample: 0.8
+    subsample_freq: 1
+    colsample_bytree: 0.8

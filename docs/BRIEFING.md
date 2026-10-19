@@ -182,6 +182,37 @@ A–D (2020, 2021, 2022, 2019):
   folds, pooled within noise; pending.
 - Lesson: re-expressing the margin adds nothing the trees can't combine. Gains come from new
   information, i.e. the physics (DP, coupling, reservoirs). That supports the LP track.
+- exp 012, XGBoost instead of LightGBM (same features): 0.9780 vs 0.9789, within noise and
+  2× slower. LightGBM stays the main model; XGBoost is in `src/models.py` for the report
+  and a blend.
+- **exp 013, + relaxed LP of the whole watercourse (`src/features/relaxed_lp.py`): 0.9829.**
+  Kept; `lp_margin` (from the LP duals) is the #1 feature. Gains on Hogga (+0.03), Haukeli
+  (+0.05), Kjela (+0.02).
+
+**LP lesson: the synthetic water values aren't consistent across reservoirs.** Valuing
+leftover water physically ("sea": energy down to the sea × the reservoir's own water
+value) failed the sanity check (LP AUC ≈ 0.70 vs 0.886 for the simple rule): Vinje's
+trade-off becomes 1.93·price + 3.5·wv_Vinjevatn − 5.43·wv_Vaamarvatn, which amplifies the
+difference between two series that only correlate 0.82 (AUC 0.52). The labels instead
+follow "price vs the plant's **own upstream** water value" for every plant (AUC 0.86–0.99),
+except Vinje, which follows Vinjevatn (0.88 vs 0.76 for its own Vaamarvatn). The working
+**"path" valuation** prices each plant's leg down the cascade at that plant's own upstream
+water value, so every plant's LP trade-off is that rule, while the LP still enforces the
+water balance. Sanity check with "path": LP margin 0.905 mean over units (Tokke
+0.92–0.93, Vinje 0.88–0.91).
+
+Later in the same round:
+- Ablation (exp 014a–c): the DP (−0.0011 without it) and the Tokke–Vinje coupling (−0.0071)
+  are still needed next to the LP; spill pressure isn't (−0.0002), so it was removed.
+- exp 015: pricing Vinje's LP leg at Vinjevatn's water value made the LP *worse* at the
+  sanity check (Tokke 0.88–0.91, Vinje 0.85–0.88); not run.
+- exp 016, more capacity (60% of rows, 1500 trees): −0.0001 at 3× the time. The model is
+  feature-limited, not capacity-limited.
+- **exp 017, LP with the six min-flow constraints (soft): 0.9840.** Kept. LP "Lio on" AUC
+  0.853 → 0.955 at the sanity check, and Lio +0.02–0.07 in the model: the min flow on
+  r_Vest_Vassdraget drives Lio.
+- Per-unit AUC at exp 017 (mean over folds): Haukeli 0.907 is the weakest by far, then
+  Vinje G3 0.963; all others ≥ 0.975.
 
 Two more checks from the same session:
 - Averaging predictions over overlapping cases **hurts**: 0.934 → 0.926 at decay 0.5, and
@@ -643,8 +674,8 @@ are the cheapest points in the project.
   - `leakage-audit`: the §5–6 checklist run against a diff.
 
 ## 8. Open questions
-- ❓ What drives Lio (the min-flow constraint on r_Vest_Vassdraget?) and Haukeli (a tiny unit,
-  close to run-of-river)? These are the weakest units at about 0.90–0.92.
+- ✅ Lio is driven by the min flow on r_Vest_Vassdraget (exp 017). ❓ What drives Haukeli (a
+  tiny unit, close to run-of-river)? Now the weakest unit at 0.907.
 - ❓ Does the cheap DP/LP relaxation reproduce SHOP well enough to be a strong feature?
   The peer evidence and the LB leader say yes. Answer it with the Tokke + Vinje sanity check
   (§4.0).

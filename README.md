@@ -104,9 +104,12 @@ Added during the experiments (see the journal for which ones were kept):
 | `relaxed_dp` | Per-plant DP with start costs: optimal on/off path, regret, units on (BRIEFING §4.5 Level 1) |
 | `tokke_vinje` | Each of Tokke/Vinje sees the other plant's DP schedule and margin |
 | `cascade` | Each plant sees the DP schedule of the plants feeding its reservoir |
+| `relaxed_lp` | LP of the whole watercourse per case: production, effective water value, margin, fill (BRIEFING §4.5 Level 2). Takes ~2 min to build on all cores. |
+| `relaxed_lp_minflow` | The same LP plus the six min-flow constraints (features `lpm_*`); used instead of `relaxed_lp` from exp 017 |
 
-Two config options besides `features:`:
+Config options besides `features:`:
 - `drop_features:` removes single features by name from the selected groups.
+- `model: type: xgboost` uses XGBoost instead of LightGBM (see `configs/exp_012_xgboost.yaml`).
 - `model: per_unit: true` trains one model per unit instead of one pooled model.
 
 To add a group, create `src/features/<name>.py` with a `build(data)` function (see the

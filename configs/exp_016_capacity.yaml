@@ -1,0 +1,41 @@
+# Experiment 016: model capacity (BRIEFING §4 step 4, tuning). exp 014c's features with
+# 60% of the training rows and 1500 trees at learning rate 0.03. The 35% / 800-tree setting
+# dates from baseline_v2 with fewer features. One hypothesis: the model is now capacity-limited.
+
+name: exp_016_capacity
+change: "exp 014c with more capacity: 60% of rows (was 35%), 1500 trees at learning rate 0.03 (was 800 at 0.05)"
+compare_to: exp_014c_without_hydro_pressure
+
+features:            # same groups as exp 001
+  - price_shape
+  - calendar
+  - water_value
+  - hydro
+  - unit_static
+  - wv_margin
+  - scarcity
+  - case_economics
+  - relaxed_dp
+  - tokke_vinje
+  - relaxed_lp
+
+drop_features:       # single features removed from the groups above
+  - price
+  - price_wkmean
+  - wv_up_end
+  - wv_up_start
+  - wv_dn_end
+  - net_wv
+
+model:               # unchanged from exp 001
+  type: lightgbm
+  row_share: 0.6
+  seed: 0
+  params:
+    n_estimators: 1500
+    learning_rate: 0.03
+    num_leaves: 127
+    min_child_samples: 200
+    subsample: 0.8
+    subsample_freq: 1
+    colsample_bytree: 0.8
