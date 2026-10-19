@@ -1,6 +1,8 @@
 """Model training on the long format (one row per case × unit × hour).
 
-Model types (`model: type:` in a config): `lightgbm` or `xgboost`. Add new types to
+Model types (`model: type:` in a config): `lightgbm`, `xgboost`, or `blend` (a weighted
+average of the raw probabilities of several member models, each with its own model
+config under `members:`; global weights, never per unit, BRIEFING §4.2). Add new types to
 `_train`, `_predict_one` and `_gain`; the rest of the harness doesn't need to change.
 With `per_unit: true`, one model is trained per unit (a list of 14 models) instead of one
 pooled model with the unit as a feature.
@@ -40,11 +42,21 @@ def _gain(model) -> np.ndarray:
     return gain / max(gain.sum(), 1e-12)
 
 
+class Blend:
+    """Weighted average of member models' probabilities (weights normalised to sum 1)."""
+
+    def __init__(self, members: list[tuple[float, object]]):
+        total = sum(w for w, _ in members)
+        self.members = [(w / total, m) for w, m in members]
+
+
 def fit(model_cfg: dict, X: np.ndarray, Y: np.ndarray, case_idx: np.ndarray, names: list[str]):
     """Train on the given cases. X is (case, unit, hour, feature), Y is (case, unit, hour).
 
     Rows are subsampled to `row_share` of the training rows to fit in memory.
     """
+    if model_cfg["type"] == "blend":
+        return Blend([(m["weight"], fit(m, X, Y, case_idx, names)) for m in model_cfg["members"]])
     rng = np.random.default_rng(model_cfg.get("seed", 0))
     n_features = X.shape[-1]
 
@@ -66,6 +78,8 @@ def fit(model_cfg: dict, X: np.ndarray, Y: np.ndarray, case_idx: np.ndarray, nam
 
 def predict(model, X: np.ndarray, case_idx: np.ndarray) -> np.ndarray:
     """P(ON) for the given cases, shape (case, unit, hour)."""
+    if isinstance(model, Blend):
+        return sum(w * predict(m, X, case_idx) for w, m in model.members)
     X_cases = X[case_idx]
     if isinstance(model, list):  # one model per unit
         return np.stack([_predict_one(m, X_cases[:, u].reshape(-1, X.shape[-1])).reshape(len(case_idx), -1)
@@ -75,5 +89,8 @@ def predict(model, X: np.ndarray, case_idx: np.ndarray) -> np.ndarray:
 
 def importance(model, names: list[str]) -> pd.Series:
     """Share of the total split gain per feature (averaged over units for per-unit models)."""
+    if isinstance(model, Blend):
+        return sum(w * importance(m, names) for w, m in model.members)
     models = model if isinstance(model, list) else [model]
     return pd.Series(np.mean([_gain(m) for m in models], axis=0), index=names)
+

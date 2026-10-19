@@ -106,11 +106,15 @@ Added during the experiments (see the journal for which ones were kept):
 | `cascade` | Each plant sees the DP schedule of the plants feeding its reservoir |
 | `relaxed_lp` | LP of the whole watercourse per case: production, effective water value, margin, fill (BRIEFING §4.5 Level 2). Takes ~2 min to build on all cores. |
 | `relaxed_lp_minflow` | The same LP plus the six min-flow constraints (features `lpm_*`); used instead of `relaxed_lp` from exp 017 |
+| `relaxed_lp_uc` | The min-flow LP plus a relaxed unit commitment: units on, p_min, start/stop costs (features `lpu_*`); used from exp 021 |
+| `storage_upstream` | Fill of the real storage lake behind tiny pass-through reservoirs (Haukeli → Langeidvatn) |
 
 Config options besides `features:`:
 - `drop_features:` removes single features by name from the selected groups.
 - `model: type: xgboost` uses XGBoost instead of LightGBM (see `configs/exp_012_xgboost.yaml`).
 - `model: per_unit: true` trains one model per unit instead of one pooled model.
+- `model: type: blend` averages several member models (`members:`, each a model config
+  with a `weight`).
 
 To add a group, create `src/features/<name>.py` with a `build(data)` function (see the
 existing files and the docstring in `src/features/__init__.py`), then list it in a config.

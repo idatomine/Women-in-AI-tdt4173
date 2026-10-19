@@ -2,7 +2,7 @@
 
 TDT4173 (NTNU) Kaggle project with SINTEF Energy Research. The task is to predict the hourly
 on/off unit commitment of 14 hydropower generating units (Tokke–Vinje system) over 168-hour
-cases. **Read `docs/BRIEFING.md` before doing modelling work.** It holds the verified data
+cases. **Read `docs/BRIEFING.md` before doing modelling work.** **Current task: the LP accuracy loop, see BRIEFING §9 (handoff).** It holds the verified data
 facts, the validation protocol, the feature backlog and the pitfalls.
 
 ## Environment

@@ -213,6 +213,13 @@ Later in the same round:
   r_Vest_Vassdraget drives Lio.
 - Per-unit AUC at exp 017 (mean over folds): Haukeli 0.907 is the weakest by far, then
   Vinje G3 0.963; all others ≥ 0.975.
+- Public LB for exp 017: **0.99042** (VT1, the highest VT: 0.99040). Local CV 0.9840.
+- No gain: smoothing predictions within a case (exp 018, worse at every window), a
+  LightGBM + XGBoost blend (exp 020, the two make the same errors), Haukeli's real storage
+  lake Langeidvatn as a feature (exp 019; the LP already has it), enforcing the plant
+  priority order (exp 022; the model already respects it).
+- **exp 021, LP with a relaxed unit commitment (units on, p_min, start/stop costs): 0.9850.**
+  Kept after a two-seed check (+0.0010, all folds up).
 
 Two more checks from the same session:
 - Averaging predictions over overlapping cases **hurts**: 0.934 → 0.926 at decay 0.5, and
@@ -691,3 +698,71 @@ are the cheapest points in the project.
   submissions.
 - ❓ Course rules on using other teams' public repos and external SINTEF data, and whether
   the public/private split is random or by time. **Ask the course staff.**
+
+## 9. Handoff: LP accuracy loop (2026-10-19, in progress)
+
+**Where we are.** Best model: exp 021 (`configs/exp_021_lp_commitment.yaml`), local CV
+**0.9850**, public LB **0.99067** (VT1, the highest VT: 0.99040; leader 0.99795). Details per
+run in `experiments/journal.md`. Model tuning, blends, smoothing and stacking-style
+post-processing no longer help (exps 016, 018, 020, 022); every real gain has come from
+making the LP more like SHOP (water balance +0.004, min flow +0.0013, start costs +0.001).
+
+**Why the LP.** SHOP's own relaxed solution reproduces the labels with F1 ≈ 0.97; our LP's
+best signal reaches AUC ≈ 0.92 per unit. Closing that gap is the most likely way to close
+the gap to the leader. SHOP itself is not an option for the deliverable (license, and the
+short notebooks must run offline in ≤ 12 h on a normal PC).
+
+**Code state.** `src/features/relaxed_lp.py` was rewritten with three new options, all off
+by default. With the defaults it reproduces exp 021's LP exactly (regression check:
+max difference ≈ 1e-7). The new options are implemented but **not yet tested**:
+- `production_curves=True`: production as a concave piecewise-linear function of
+  discharge (4 pieces), from the YAML turbine efficiency curves (nearest reference head),
+  generator efficiency curve and head losses (`main_loss`, `penstock_loss`), for 1 … n
+  units sharing the flow. Replaces one constant k at the best efficiency, which overrates
+  part-load running.
+- `flow_costs="yaml"`: rivers cost their `flow_cost_const` (spill 1000, bypass 10 per
+  m³/s·h) instead of 0.01, so spilling is a last resort as in SHOP. Likely matters for the
+  negative-price hours in 2023–24 (the LP can currently dump water for free).
+- `head_iterations=1`: re-solve with each reservoir's head at its mean level in the first
+  solution (SHOP's successive linearisation, simplest form).
+
+**The loop (fast, ~30 s per variant).** `analysis/lp_loop.py` scores an LP variant's own
+signals against the labels on every 6th train case, without training any model:
+
+    PYTHONPATH=$PWD .venv/bin/python analysis/lp_loop.py '{"min_flow": true, "commitment": true, "production_curves": true}'
+
+Baseline to beat (exp 021's LP, options `{"min_flow": true, "commitment": true}`): mean AUC
+**unit_on 0.8473, margin 0.9207**. Weakest units: Kjela (0.573 / 0.714), Vinje G3
+(0.799 / 0.888), Tokke G2/G4 unit_on (≈ 0.81).
+
+**Steps, in order:**
+1. Each new option alone on top of the baseline: `production_curves`, `flow_costs: "yaml"`,
+   `head_iterations: 1`. Keep an option if the mean margin or unit_on AUC rises clearly
+   (≥ ~0.003) without Tokke/Vinje dropping.
+2. Combine the winners. Then re-test `basis: "sea"` with them: it failed with the
+   simple LP, but may behave differently once efficiency and spill are realistic.
+3. For the best combination, add a variant group (copy `src/features/relaxed_lp_uc.py`,
+   new file name and prefix, pass the options) and run a full experiment against exp 021
+   (copy its config, swap `relaxed_lp_uc` for the new group). Judge by the §5b rule; for
+   borderline results run a second seed (as exps 003 and 023 did).
+4. Time-boxed MILP trial (BRIEFING §4.5 Level 3): the LP's fractional units-on is its
+   weakest output. Solve ~50 cases with real binaries (`scipy.optimize.milp`, HiGHS, short
+   time limit) and measure seconds per case and the unit_on AUC. Only pursue it if all
+   3647 cases fit in a few hours on 4 cores.
+5. Submit a new best to Kaggle only after a clear local gain (≤ 2 submissions per day) and
+   record the public score in the journal.
+
+**Pitfalls when changing the LP:**
+- Feature caches are keyed on the group's own file and `src/data.py` only. The variant
+  groups (`relaxed_lp_minflow`, `relaxed_lp_uc`, `tokke_vinje`, `cascade`,
+  `storage_upstream`) import `relaxed_lp.py`, so **after changing `relaxed_lp.py`, delete
+  their caches** (`rm features/relaxed_lp_uc__*` etc.) or they keep stale features.
+- Don't edit `relaxed_lp.py` while an experiment is building an LP cache: the worker
+  processes read the file from disk.
+- `solve_all` uses all cores but one. Close the laptop lid only with the charger in, or
+  runs stall.
+
+**After the loop (by about Nov 1):** freeze the model and choose the two final submissions
+(§5b), check them once on the locked 2018 holdout, then write `Short_notebook_1/2.ipynb`
+(all code inside, from the raw data, ≤ 12 h), the model-interpretation section (SHAP /
+feature importance; −3 points if missing) and the report. Deadline 2026-11-08 22:00.

@@ -1,0 +1,40 @@
+# Noise check: same as exp_017_lp_minflow, only the random seeds changed.
+
+name: exp_023a_seed1_of_017
+change: "exp_017_lp_minflow with seed 1 (noise check for the 021 decision)"
+compare_to: exp_017_lp_minflow
+
+features:            # same groups as exp 001
+  - price_shape
+  - calendar
+  - water_value
+  - hydro
+  - unit_static
+  - wv_margin
+  - scarcity
+  - case_economics
+  - relaxed_dp
+  - tokke_vinje
+  - relaxed_lp_minflow
+
+drop_features:       # single features removed from the groups above
+  - price
+  - price_wkmean
+  - wv_up_end
+  - wv_up_start
+  - wv_dn_end
+  - net_wv
+
+model:               # unchanged from exp 001
+  type: lightgbm
+  row_share: 0.35
+  seed: 1
+  params:
+    n_estimators: 800
+    learning_rate: 0.05
+    num_leaves: 127
+    min_child_samples: 200
+    subsample: 0.8
+    subsample_freq: 1
+    colsample_bytree: 0.8
+    random_state: 1
