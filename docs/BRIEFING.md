@@ -14,6 +14,10 @@ Other changes:
 - the oracle numbers are reconciled (§3);
 - the autonomous loop is replaced by a lean manual plan with a timeline (§7).
 
+**Revised 2026-10-19.** The §3 single-rule baseline is corrected (upstream-only ≈ 0.85–0.91,
+not 0.59), the DP margin in §4.5 now uses the upstream water value only, and findings from
+`analysis/01_eda.ipynb` are added (§2, §2.3, §4.1 #5, §4.2, §6).
+
 **Deadlines:**
 - VTs are frozen after **2026-10-18**.
 - Project deadline: **2026-11-08 22:00** (strict; late = −30 points).
@@ -56,6 +60,17 @@ competition's Evaluation page.
 - Label columns are unit-major: `result_committed_<Plant>_<Unit>_t<h>`, i.e. all 168 hours of
   Hogga_G1, then all of Tokke_G1, and so on. The plant name `Vesle Kjela` contains a space.
 - `total_calculation_time` exists only in train. **Do not use it as a feature.**
+- From `analysis/01_eda.ipynb`:
+  - **Volumes go above `max_vol`** in 14 of 17 reservoirs, by up to 18% (Bandak), on 0–7%
+    of days (floods). It's real, so don't clip the feature. The LP's volume bounds must
+    allow it, or start states above `max_vol` make the LP infeasible.
+  - **The Hyljelihyl and Vatjern volumes are constant** (placeholders, no records). Drop
+    them as features and don't trust them as LP start states.
+  - Several **inflow series are scaled copies** of each other (correlation ≈ 1); a few
+    representative series carry the information.
+  - Water-value deduplication (keep → drop): Kjelavatn → Staavatn; Langesae → Foersvatn,
+    Bordalsvatn; Venemo → Vaamarvatn, Totak, Hyljelihyl; Bitdalsvatn → Songavatn;
+    Langeidvatn → Vatjern.
 
 ### 2.1 Water values are synthetic and built from a formula ✅📚
 `water_value[day d, reservoir] = c × mean(price over the 168 h starting at d)`, where
@@ -104,7 +119,11 @@ comes only from start/stop costs. Full details: `research/03_hydropower_domain_a
   - So "how many units at the plant are on" is the real variable.
 - **Overlapping cases are solved independently.** Case d's hours 24–167 agree with case d+1's
   hours 0–143 on only 87.8% of labels. There is no initial-state input, and the first hours
-  (t0–t3) are the hardest.
+  (t0–t3) are the hardest. Tokke and Vinje are the least stable (≈ 82% agreement), the
+  small plants the most (≈ 95%).
+- **Possible label noise (EDA §2.2.3):** slow solver runs come in clusters of consecutive
+  start days, with a spike at ≈ 1000 s that looks like a time limit, so those labels may be
+  suboptimal. It's worst in late 2022.
 
 ### 2.4 Market regime ✅
 Mean price per year: 2015–19 20–43 EUR/MWh; 2020 9; 2021 76; **2022 211**; test 2023 ≈ 79,
@@ -126,7 +145,8 @@ removed (7-day embargo).
 |---|---|---|---|
 | Unit base rate | 0.555 | | |
 | Raw price | 0.521 | | |
-| Price − (wv_up − wv_down) at +7 d, single rule | 0.592 | | |
+| **Price − upstream wv at +7 d**, single rule | **0.911** | **0.849** | **0.863** |
+| Price − (wv_up − wv_down) at +7 d, single rule | 0.592 | 0.591 | 0.566 |
 | LightGBM pooled, generic features (`baseline_lgbm.py`) | 0.910 | 0.951 | 0.961 |
 | + physics features: price vs +7 d wv, scarcity coef, profitable-hour share (`baseline_v2.py`) | **0.970** | **0.964** | |
 | Oracle that knows each unit-week's true ON fraction (level only) | 0.960 | 0.971 | |
@@ -135,6 +155,17 @@ An independent re-implementation (forward-only folds, per-unit LightGBM, ~115 ge
 features, water value as the *average* of start and +7 d) scored **0.941 (2021) / 0.927
 (2022)**. That confirms that using the +7 d value directly, not a blend, is worth about
 +0.03.
+
+⚠️ **The two single-rule rows (corrected 2026-10-19).** Both are one number per row,
+ranked across all units and hours together (micro-AUC):
+- **Upstream only** (price − the water value of the reservoir the plant takes water from)
+  is the strong rule: 0.85–0.91 pooled, and 0.73–0.996 per unit in 2022 (EDA §4.2).
+- **Subtracting the downstream value** makes it much worse (≈ 0.59; Vinje 0.33 per unit,
+  worse than random). Every water value is ≈ c × next week's mean price, so
+  wv_up − wv_down is the difference of two similar numbers and close to 0. Then
+  price − (wv_up − wv_down) ≈ price, and raw price carries almost no signal.
+- An earlier version of this table listed only the net rule (0.592) as "the single rule",
+  which understated the baseline. Use the upstream rule as the bar to beat.
 
 Two more checks from the same session:
 - Averaging predictions over overlapping cases **hurts**: 0.934 → 0.926 at decay 0.5, and
@@ -197,8 +228,9 @@ solves in well under a second per case.
 2. **LP for Tokke + Vinje only**: 7 of 14 units, coupled via the tiny Vinjevatn (9.4 Mm³).
    Reservoirs: Vaamarvatn, Vinjevatn and Bandak.
    - **Sanity check:** the AUC of LP production ÷ p_max against the labels for these 7
-     units, per year. It must be clearly above the single rule (0.59), and ideally above
-     the DP. If not, fix the LP before adding units.
+     units, per year. It must be clearly above the upstream single rule for the same units
+     (per unit: Tokke ≈ 0.96, Vinje ≈ 0.82–0.84 in 2022), and ideally above the DP. If not,
+     fix the LP before adding units.
 3. **Full cascade** following the YAML `connections`, plus min-flow / min-volume.
 4. Optional: a relaxed start-cost term, to capture the persistence SHOP gets from start
    costs.
@@ -255,8 +287,9 @@ The NN question, assessed fairly:
 are cheap. Get #1–#4 in first: they are the base the LP features are measured against.
 
 1. Price vs the **upstream water value at +7 d**: the difference scaled by the week's price
-   level, and a clipped ratio (see §2.4). Add the downstream reservoir's value too (net
-   water value).
+   level, and a clipped ratio (see §2.4). The downstream reservoir's value can be added as
+   an *extra* feature, but never in place of the upstream margin: the net version alone is
+   much weaker (§3).
 2. **Scarcity coefficients:** c_start = wv_start / mean price of the case week; c_end = wv_+7 /
    mean price of the following week. Use the 9 deduplicated series.
 3. **Within-case price shape:** rank, z-score, rolling 3/6/12/24 h means, lead/lag
@@ -265,7 +298,9 @@ are cheap. Get #1–#4 in first: they are the base the LP features are measured 
    water value, the summed positive margin, and the length of the longest profitable block.
 5. **Hydrology:** reservoir fill (vol / max_vol from the YAML) for the upstream and downstream
    reservoirs; inflow over the horizon ÷ free space (spill pressure); distance to the
-   min-volume floor.
+   min-volume floor. **The unit's own upstream fill is strong** (EDA §4.3: Songa ON 19% of
+   the time in the emptiest 10% of weeks vs 93% in the fullest; Kjela 7% → 76%), while
+   system-wide fill and inflow are weak. Get it in early, with #1–#4.
 6. **Constraints:** min-flow on r_Vest_Vassdraget (likely drives **Lio**), plus
    Totak/Byrtevatn/Staavatn min-volume periods.
 7. **Relaxed-optimiser features: the main track (§4.0, spec in §4.5).** This is the
@@ -303,6 +338,9 @@ are cheap. Get #1–#4 in first: they are the base the LP features are measured 
   the window size. Do not average *across* overlapping cases; that was measured to hurt
   (§3).
 - Weight recent years more; test 2015–16 down-weighting.
+- Down-weight cases from slow solver runs (possible label noise, §2.3). This uses
+  `total_calculation_time` as a *training weight* only, never as a feature, so it's
+  allowed; validate it like any other change.
 - k-NN over historical weeks as a cheap baseline or feature.
 - Optional, after the LP track: a small 1D-CNN with the same feature channels (§4.0b).
 
@@ -346,8 +384,9 @@ rebuild. It's a rough, fast approximation whose outputs become features; the ML 
 the corrections. It uses only the §2.0 case inputs, so it is leakage-safe.
 
 **Level 1: per-plant dynamic program (start here, about 1–2 h of work, milliseconds per case)**
-- For each plant and each hour: profit per MWh = price_t − wv_up(d+7) + wv_down(d+7). The
-  water values are already in EUR/MWh.
+- For each plant and each hour: profit per MWh = price_t − wv_up(d+7). The water values are
+  already in EUR/MWh. Don't add back wv_down: the net margin scores ≈ 0.59 against ≈ 0.85–0.91
+  for upstream only (§3). Test the net version as a variant at most.
 - State = number of units on (0 … n_units; Tokke 4, Vinje 3, others 1). Running k units
   earns k × p_max × margin_t. Each start or stop costs startcost_const (from the YAML).
 - Run a DP / Viterbi over the 168 hours to get the optimal on/off path.
@@ -389,7 +428,7 @@ sanity check (§4.0) before extending it to the full cascade.
   - **shadow prices (duals) of the water balance**, i.e. the effective hourly water value.
     These are often better than the static water value.
 - **Sanity check:** the AUC of the LP-implied UC alone over 2015–22 should be clearly above
-  the single-rule baseline (0.59). Report it per unit.
+  the upstream single-rule baseline (pooled ≈ 0.85–0.91, §3). Report it per unit.
 
 **Level 3 (optional): the same model as a MILP with binaries** (`scipy.optimize.milp` or
 HiGHS). It's closer to SHOP but slower; only consider it if Level 2 features plateau.
@@ -541,6 +580,10 @@ Never pick a submission because it has the highest public LB alone.
 - [ ] Ratio features (price ÷ water value) blow up near zero and flip with negative prices.
       Clip them and keep scaled-difference versions (§2.4).
 - [ ] Don't average predictions across overlapping cases. It was measured to hurt (§3).
+- [ ] LP volume bounds must allow start volumes above `max_vol` (floods, §2), and must not
+      rely on the constant Hyljelihyl/Vatjern volumes.
+- [ ] Use the **upstream** water value as the core margin. The net (upstream − downstream)
+      margin alone is much weaker (§3).
 - [ ] The LP must use only §2.0 inputs: start-day volume, the +7 d water value, and prices
       and inflows inside the case. Assert this in a unit test, like the feature code (§4.4).
 

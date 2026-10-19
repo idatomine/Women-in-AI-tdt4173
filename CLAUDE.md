@@ -19,16 +19,19 @@ facts, the validation protocol, the feature backlog and the pitfalls.
 - `prediction_mapping.csv`: the 725 test cases (Run No 2923–3647, 2023-01-01 → 2024-12-25).
 - `sample_submission.csv`: the required column order (`Run No` + 2352 label columns).
 - `kaggle_metric.py`: the exact metric (micro ROC-AUC). Always evaluate with `score()`.
-- `analysis/`: throwaway EDA and baseline scripts, not the pipeline.
+- `analysis/`: EDA notebook and throwaway baseline scripts (`common.py` holds their shared
+  loading/split/training code), not the pipeline.
 - `research/01–04`: literature, Kaggle/peer, domain/SHOP, and autonomous-loop research,
   with sources.
 - `docs/BRIEFING.md`: the synthesis and handoff.
 
 ## Hard rules
-1. **Validation is by year with a ≥ 7-day embargo** (validation years 2020, 2021, 2022).
-   Never use a random K-fold over cases, because neighbouring cases overlap 6/7 days.
-2. Use the water value at **case start + 7 days** as the end-of-horizon value (the SHOP
-   input), and compare it directly to price in EUR/MWh.
+1. **Validation is by year with a ≥ 7-day embargo**: folds A–D validate on 2020, 2021,
+   2022 and 2019, and 2018 is a locked holdout (BRIEFING §5). Never use a random K-fold
+   over cases, because neighbouring cases overlap 6/7 days.
+2. Use the **upstream** water value at **case start + 7 days** as the end-of-horizon value
+   (the SHOP input), and compare it directly to price in EUR/MWh. Subtracting the
+   downstream value instead makes the margin much weaker (BRIEFING §3).
 3. **Never use these as features:**
    - `total_calculation_time`
    - reservoir volumes after the case start day

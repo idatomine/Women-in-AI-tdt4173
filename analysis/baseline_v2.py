@@ -1,41 +1,75 @@
-"""EDA baseline v2: adds physics features (price vs +7d water value, scarcity coefficient)."""
-import sys, time, numpy as np, pandas as pd, lightgbm as lgb
-from sklearn.metrics import roc_auc_score as auc
-X0=np.load('analysis/_X.npy')
-exec(open('analysis/eda_load.py').read())
-N,U,H=Y.shape
-end=starts+pd.Timedelta(days=7)
-prh=price.resample('h').mean()
-P2=np.stack([prh.loc[s+pd.Timedelta(days=7):s+pd.Timedelta(hours=7*24+167)].to_numpy() for s in starts])  # week after horizon
-Pm=P.mean(1); P2m=P2.mean(1)
-new=[]
-for i,u in enumerate(units):
-  p=plant_of(u); up=PLANT_UP[p]; dn=PLANT_DOWN[p]
-  wu=wv.loc[end,up].mean(axis=1).to_numpy(); wus=wv.loc[starts,up].mean(axis=1).to_numpy()
-  wd=wv.loc[end,dn].to_numpy() if dn else np.zeros(N)
-  coef_s=wus/(np.abs(Pm)+1e-3); coef_e=wu/(np.abs(P2m)+1e-3)
-  marg=P-wu[:,None]; scale=np.abs(P).mean(1,keepdims=True)+1
-  f=np.stack([marg/scale, P/(np.abs(wu)[:,None]+1), (P-(wu-wd)[:,None])/scale,
-              np.repeat(coef_s[:,None],H,1), np.repeat(coef_e[:,None],H,1),
-              np.repeat(((marg>0).mean(1))[:,None],H,1),  # share of profitable hours in week
-              np.repeat((np.clip(marg,0,None).sum(1)/scale[:,0]/H)[:,None],H,1),
-              np.repeat((P2m/(np.abs(Pm)+1))[:,None],H,1)],-1)
-  new.append(f)
-X=np.concatenate([X0,np.stack(new,1).astype(np.float32)],-1)
-def run(vy,seed=0,emb=7):
-  va=(starts.dt.year==vy).to_numpy(); v0=starts[va].min(); v1=starts[va].max()
-  tr=(~va)&((starts+pd.Timedelta(days=emb)<=v0)|(starts-pd.Timedelta(days=emb)>=v1)).to_numpy()
-  Xt=X[tr].reshape(-1,X.shape[-1]); yt=Y[tr].ravel(); sub=np.random.default_rng(seed).random(len(yt))<0.35
-  m=lgb.LGBMClassifier(n_estimators=800,learning_rate=0.05,num_leaves=127,min_child_samples=200,subsample=0.8,subsample_freq=1,colsample_bytree=0.8,verbose=-1)
-  m.fit(Xt[sub],yt[sub],categorical_feature=[X0.shape[-1]-4])
-  p=m.predict_proba(X[va].reshape(-1,X.shape[-1]))[:,1].reshape(-1,U,H)
-  return auc(Y[va].ravel(),p.ravel()),p,va
-for vy in [int(a) for a in sys.argv[1:]]:
-  t=time.time(); s,p,va=run(vy)
-  yv=Y[va]
-  # oracle-level diagnostic: replace prediction with true weekly ON fraction (level-only)
-  lvl=np.broadcast_to(yv.mean(2,keepdims=True),yv.shape)
-  s_lvl=auc(yv.ravel(),lvl.ravel())
-  # level+our timing: rank-within-unit-week from model plus true level
-  print(f'val {vy}: v2 AUC {s:.4f}  | oracle-level-only {s_lvl:.4f}  ({time.time()-t:.0f}s)')
-  print('   per-unit',{u:round(auc(yv[:,i].ravel(),p[:,i].ravel()),3) for i,u in enumerate(units)})
+"""EDA baseline v2: v1 plus physics features (price vs the +7 d water value, scarcity).
+
+Throwaway analysis, not the final pipeline; the scores are in docs/BRIEFING.md §3.
+Also prints a level-only oracle: the AUC if we knew each unit-week's true ON share, but
+nothing about which hours within the week.
+
+Usage, from the repo root:
+    .venv/bin/python analysis/baseline_v2.py 2022 2021
+"""
+
+import sys
+import time
+
+import numpy as np
+import pandas as pd
+
+from baseline_lgbm import build_features
+from common import (DOWNSTREAM, HOURS, UPSTREAM, Data, daily_value, fit_and_predict,
+                    hourly_window, load_data, micro_auc, per_unit_auc, plant_of)
+
+
+def physics_features(data: Data) -> tuple[np.ndarray, list[str]]:
+    """Physics features (case, unit, hour, feature) in float32, plus the feature names."""
+    starts = data.starts
+    ends = starts + pd.Timedelta(days=7)
+    prices = hourly_window(data.price, starts)
+    next_week = hourly_window(data.price, starts, offset_hours=7 * 24)
+    week_mean = prices.mean(axis=1)
+    next_week_mean = next_week.mean(axis=1)
+    scale = np.abs(prices).mean(axis=1, keepdims=True) + 1
+
+    def per_case(values):
+        return np.repeat(values[:, None], HOURS, axis=1)
+
+    names = ["margin_up", "price_over_wv", "margin_net", "scarcity_start", "scarcity_end",
+             "profitable_share", "positive_margin", "next_week_price"]
+    per_unit = []
+    for unit in data.units:
+        up = UPSTREAM[plant_of(unit)]
+        down = DOWNSTREAM[plant_of(unit)]
+        wv_up_end = daily_value(data.water_value, ends, up)
+        wv_up_start = daily_value(data.water_value, starts, up)
+        wv_down_end = daily_value(data.water_value, ends, [down]) if down else np.zeros(len(starts))
+        margin = prices - wv_up_end[:, None]
+
+        features = {
+            "margin_up": margin / scale,
+            "price_over_wv": prices / (np.abs(wv_up_end)[:, None] + 1),
+            "margin_net": (prices - (wv_up_end - wv_down_end)[:, None]) / scale,
+            # Scarcity coefficient c in water value ≈ c × mean price (BRIEFING §2.1)
+            "scarcity_start": per_case(wv_up_start / (np.abs(week_mean) + 1e-3)),
+            "scarcity_end": per_case(wv_up_end / (np.abs(next_week_mean) + 1e-3)),
+            "profitable_share": per_case((margin > 0).mean(axis=1)),
+            "positive_margin": per_case(np.clip(margin, 0, None).sum(axis=1) / scale[:, 0] / HOURS),
+            "next_week_price": per_case(next_week_mean / (np.abs(week_mean) + 1)),
+        }
+        per_unit.append(np.stack([features[n] for n in names], axis=-1))
+    return np.stack(per_unit, axis=1).astype(np.float32), names
+
+
+if __name__ == "__main__":
+    data = load_data()
+    X_v1, names_v1 = build_features(data)
+    X_physics, _ = physics_features(data)
+    X = np.concatenate([X_v1, X_physics], axis=-1)
+    del X_v1, X_physics
+
+    for val_year in [int(a) for a in sys.argv[1:]] or [2022]:
+        t0 = time.time()
+        val, _, pred = fit_and_predict(X, data, val_year, names_v1.index("unit"), n_estimators=800)
+        y_val = data.Y[val]
+        weekly_share = np.broadcast_to(y_val.mean(axis=2, keepdims=True), y_val.shape)
+        print(f"val {val_year}: v2 AUC {micro_auc(y_val, pred):.4f}  "
+              f"| oracle-level-only {micro_auc(y_val, weekly_share):.4f}  ({time.time() - t0:.0f}s)")
+        print("  per-unit", per_unit_auc(y_val, pred, data.units))
