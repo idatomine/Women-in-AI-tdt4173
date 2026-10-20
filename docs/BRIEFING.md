@@ -735,6 +735,41 @@ Baseline to beat (exp 021's LP, options `{"min_flow": true, "commitment": true}`
 **unit_on 0.8473, margin 0.9207**. Weakest units: Kjela (0.573 / 0.714), Vinje G3
 (0.799 / 0.888), Tokke G2/G4 unit_on (≈ 0.81).
 
+**Loop results so far (2026-10-20).** Mean AUC over units (unit_on / margin):
+
+| LP options (on top of min_flow + commitment) | unit_on | margin |
+|---|---|---|
+| none (exp 021's LP) | 0.8473 | 0.9207 |
+| production_curves | 0.8745 | 0.9237 |
+| flow_costs "yaml" | 0.8626 | 0.9251 |
+| head_iterations 1 | 0.8452 | 0.9195 (dropped) |
+| **production_curves + flow_costs "yaml"** | **0.8885** | **0.9289** |
+| same + basis "sea" | 0.7264 | 0.7886 ("sea" still fails) |
+
+| curves + yaml costs + integer_units (MILP) | 0.8470 | 0.9289 (dropped) |
+
+The best combination is the feature group `relaxed_lp_shop`. **exp 024 (it replaces
+relaxed_lp_uc): CV 0.9865, +0.0015 over exp 021, mostly 2020 (+0.006).** Public LB **0.99099** (021: 0.99067, VT1: 0.99040).
+
+MILP trial (step 4) done: fast (median 0.7 s per case, all cases ≈ 6 min on 6 cores), but
+its whole-number units-on ranks *worse* than the LP's fractional one (0.847 vs 0.889):
+a hard 0/1 decision loses the "how close" information that AUC rewards. Dropped; the
+`integer_units` option stays in relaxed_lp.py.
+
+Peer-inspired hand features (exps 025–027: water budget, forward-looking margin, head
+proxies): `water_budget` helps LightGBM *without* the LP (+0.0010, exp 025a, best LP-free
+model at 0.9798) but adds nothing on top of the LP (the LP computes the same thing). The
+other two add nothing on either base.
+
+LightGBM tuning on exp 024 (exps 028a–e: num_leaves 31/255, min_child_samples 50/1000,
+colsample 0.5): all −0.0006 … −0.0000. The original settings are near-optimal; gains must
+come from the inputs. (028f, one model per unit with the full LP features: see the journal.)
+
+Open lead: Kjela's LP margin is poor (0.69 vs 0.955 for its simple rule). Water Kjela
+releases into the tiny Hyljelihyl can continue via r_Hyljelihyl → Venemo → Totak → Vinje,
+a more valuable route than the one its end value assumes, so its downstream credit is
+probably inflated (the same problem as the "net" rule in §3).
+
 **Steps, in order:**
 1. Each new option alone on top of the baseline: `production_curves`, `flow_costs: "yaml"`,
    `head_iterations: 1`. Keep an option if the mean margin or unit_on AUC rises clearly

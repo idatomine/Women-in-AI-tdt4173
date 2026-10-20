@@ -32,6 +32,10 @@ Options (solve_all / solve_case keyword arguments):
   m³/s·h) instead of the tiny penalty, so spilling is a last resort as in SHOP.
 - head_iterations: re-solve with the head at each reservoir's mean level in the previous
   solution (SHOP's successive linearisation, in its simplest form).
+- integer_units (needs commitment): after the LP, solve the same problem as a MILP with
+  whole numbers of units on (BRIEFING §4.5 Level 3), with a time limit per case.
+  production / units_on / fill come from the MILP; margin and water_value stay the LP's
+  duals (a MILP has none).
 
 Uses only the §2.0 case inputs: prices and inflows over the 168 h, start-day volumes,
 the +7 d water values and the constraint tables.
@@ -47,7 +51,7 @@ import numpy as np
 import pandas as pd
 import scipy.sparse as sp
 import yaml
-from scipy.optimize import linprog
+from scipy.optimize import Bounds, LinearConstraint, linprog, milp
 
 from src.data import EXTENDED_DIR, HOURS, hourly_window, plant_of, week_prices
 
@@ -309,7 +313,8 @@ def solve_case(net: Network, prices: np.ndarray, inflow: np.ndarray, start_volum
                required_flow: np.ndarray | None = None, basis: str = END_VALUE_BASIS,
                wv_from: dict[str, str] | None = None, commitment: bool = False,
                production_curves: bool = False, flow_costs: str = "penalty",
-               head_iterations: int = 0) -> dict[str, np.ndarray] | None:
+               head_iterations: int = 0, integer_units: bool = False,
+               milp_time_limit: float = 10.0) -> dict[str, np.ndarray] | None:
     """Solve one case. prices (hour,), inflow and min_volume (hour, reservoir) in m³/s and
     Mm³, start_volume and end_water_value (reservoir,), required_flow (hour, MIN_FLOW
     column) in m³/s or None for no min-flow constraints. Options: see the module
@@ -318,7 +323,8 @@ def solve_case(net: Network, prices: np.ndarray, inflow: np.ndarray, start_volum
     result = None
     for _ in range(head_iterations + 1):
         result = _solve_once(net, levels, prices, inflow, start_volume, end_water_value, min_volume,
-                             required_flow, basis, wv_from, commitment, production_curves, flow_costs)
+                             required_flow, basis, wv_from, commitment, production_curves, flow_costs,
+                             integer_units, milp_time_limit)
         if result is None:
             return None
         mean_volume = result.pop("_volumes").mean(axis=0)
@@ -327,7 +333,8 @@ def solve_case(net: Network, prices: np.ndarray, inflow: np.ndarray, start_volum
 
 
 def _solve_once(net, levels, prices, inflow, start_volume, end_water_value, min_volume,
-                required_flow, basis, wv_from, commitment, production_curves, flow_costs):
+                required_flow, basis, wv_from, commitment, production_curves, flow_costs,
+                integer_units=False, milp_time_limit=10.0):
     n_res, n_edges, n_plants = len(net.reservoirs), len(net.edges), len(net.plants)
     heads = np.array([max(levels[net.plant_source(p)] - net.plant_data[p].outlet, 1.0) for p in range(n_plants)])
     pieces = [_production_function(net.plant_data[p], heads[p], production_curves, net.segments) for p in range(n_plants)]
@@ -432,9 +439,26 @@ def _solve_once(net, levels, prices, inflow, start_volume, end_water_value, min_
         "fill": volumes[:, sources] / net.max_vol[sources],
         "_volumes": volumes,
     }
+    on_offset = sum(size for name, size in sizes.items() if name in ("flow", "volume", "shortfall"))
     if commitment:
-        offset = sum(size for name, size in sizes.items() if name in ("flow", "volume", "shortfall"))
-        result["units_on"] = res.x[offset:offset + HOURS * n_plants].reshape(HOURS, n_plants)
+        result["units_on"] = res.x[on_offset:on_offset + HOURS * n_plants].reshape(HOURS, n_plants)
+    if integer_units and commitment:
+        integrality = np.zeros(len(res.x))
+        integrality[on_offset:on_offset + HOURS * n_plants] = 1
+        all_bounds = np.vstack(bound_parts)
+        constraints = [LinearConstraint(A_eq, b_eq.ravel(), b_eq.ravel())]
+        if A_ub is not None:
+            constraints.append(LinearConstraint(A_ub, -np.inf, b_ub))
+        mip = milp(np.concatenate(costs), integrality=integrality, bounds=Bounds(all_bounds[:, 0], all_bounds[:, 1]),
+                   constraints=constraints, options={"time_limit": milp_time_limit, "mip_rel_gap": 1e-3})
+        if mip.x is not None:  # best solution found within the time limit
+            flows = mip.x[:HOURS * n_edges].reshape(HOURS, n_edges)
+            volumes = mip.x[HOURS * n_edges:HOURS * (n_edges + n_res)].reshape(HOURS, n_res)
+            plant_mw = np.stack([(flows[:, net.plant_edges[p]] * k[net.plant_edges[p]]).sum(axis=1)
+                                 for p in range(n_plants)], axis=1)
+            result.update(production=plant_mw / capacity_mw, fill=volumes[:, sources] / net.max_vol[sources],
+                          units_on=mip.x[on_offset:on_offset + HOURS * n_plants].reshape(HOURS, n_plants),
+                          _volumes=volumes)
     return result
 
 

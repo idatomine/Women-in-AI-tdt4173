@@ -1,0 +1,41 @@
+# Experiment 025a: the water_budget group on the LightGBM-only base (exp 009), to see whether it
+# closes the gap to peer teams' LightGBM-only ≈ 0.990 public (research/02).
+
+name: exp_025a_water_budget_no_lp
+change: "exp 009 (LightGBM without LP) + water_budget"
+compare_to: exp_009_tokke_vinje
+
+features:            # same groups as exp 001
+  - price_shape
+  - calendar
+  - water_value
+  - hydro
+  - unit_static
+  - wv_margin
+  - scarcity
+  - case_economics
+  - hydro_pressure
+  - relaxed_dp
+  - tokke_vinje
+  - water_budget
+
+drop_features:       # single features removed from the groups above
+  - price
+  - price_wkmean
+  - wv_up_end
+  - wv_up_start
+  - wv_dn_end
+  - net_wv
+
+model:               # unchanged from exp 001
+  type: lightgbm
+  row_share: 0.35
+  seed: 0
+  params:
+    n_estimators: 800
+    learning_rate: 0.05
+    num_leaves: 127
+    min_child_samples: 200
+    subsample: 0.8
+    subsample_freq: 1
+    colsample_bytree: 0.8

@@ -107,6 +107,7 @@ Added during the experiments (see the journal for which ones were kept):
 | `relaxed_lp` | LP of the whole watercourse per case: production, effective water value, margin, fill (BRIEFING §4.5 Level 2). Takes ~2 min to build on all cores. |
 | `relaxed_lp_minflow` | The same LP plus the six min-flow constraints (features `lpm_*`); used instead of `relaxed_lp` from exp 017 |
 | `relaxed_lp_uc` | The min-flow LP plus a relaxed unit commitment: units on, p_min, start/stop costs (features `lpu_*`); used from exp 021 |
+| `relaxed_lp_shop` | The commitment LP plus YAML efficiency curves, head losses and SHOP's spill/bypass costs (features `lps_*`); used from exp 024 |
 | `storage_upstream` | Fill of the real storage lake behind tiny pass-through reservoirs (Haukeli → Langeidvatn) |
 
 Config options besides `features:`:
