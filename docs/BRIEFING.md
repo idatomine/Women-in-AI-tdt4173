@@ -4,8 +4,14 @@ Handoff document for whoever (human or Claude session) trains and tunes the mode
 summarises what is **verified in the data** (✅), what comes from **research** (📚, see
 `research/0*.md` for sources), and what is still a **hypothesis** (❓).
 
-Status 2026-10-16: Part 1 (understanding + direction) done. No final pipeline exists yet;
-`analysis/` holds throwaway EDA/baseline scripts only.
+**Status 2026-10-21:** best model **exp_029_main_river** (`relaxed_lp_shop2`), local CV
+**0.9912** (A–D), public LB **0.99424**. The highest VT ("[VT] Virtual Team 1") is 0.99040
+and VT2 0.99022, so the margin is 0.0038. Base points depend only on the VTs beaten, not on
+the student ranking (the top public score, 0.99798, doesn't affect the grade). The LP
+accuracy loop is closed (§9); the current phase is final picks, reproducibility and the
+report (§7).
+
+Status 2026-10-16: Part 1 (understanding + direction) done.
 
 **Revised 2026-10-16.** The main track is now **relaxed-MIP/LP features + GBDT** (§4.0).
 Other changes:
@@ -587,12 +593,11 @@ decide must therefore generalise, not chase a number.
   The 2022 fold will likely stay the lowest.
 - Public LB will probably be somewhat **higher** than local CV, since 2023–24 prices are
   closer to normal than 2022.
-- LB reference points (2026-10-16): #50 ≈ 0.990, #25 ≈ 0.995, the top 10 ≥ 0.996, and the
-  leader 0.9977, with relaxed-MIP features.
-- Expect: physics features alone give about 0.99 public. Reaching 0.995+ requires the LP
-  track.
-- Base points depend on how many VTs we beat, and the VTs are frozen after 2026-10-18.
-  Watch where the VT entries sit on the LB.
+- LB reference points (2026-10-21): our best (exp 029) 0.99424; "[VT] Virtual Team 1"
+  0.99040 and VT2 0.99022 (the two highest VTs), so our margin over VT1 is 0.0038; the top
+  public score 0.99798.
+- Base points depend only on how many VTs we beat (frozen after 2026-10-18), not on the
+  student ranking. Both final picks must clear VT1 on public.
 - Do **not** set a leaderboard number as the goal. The goal is the highest and most
   *stable* local CV.
 
@@ -642,6 +647,24 @@ Never pick a submission because it has the highest public LB alone.
       and inflows inside the case. Assert this in a unit test, like the feature code (§4.4).
 
 ## 7. Plan and timeline (Part 2)
+
+**Status 2026-10-21: the feature/LP phase is done.** Best model exp_029_main_river, CV
+0.9912, public LB 0.99424 (§9). No more feature or LP work unless the time-boxed
+joint-fill idea in §9 is tried. **Next phase, in this order:**
+1. **Determinism for exp_029:** LightGBM with a fixed `random_state`, `n_jobs` 4,
+   `deterministic=True` and `force_row_wise=True`; pinned `requirements.txt`. Run the
+   submission twice and check that the two files are identical.
+2. **Second final pick:** a multi-seed average of exp_029. It must also clear VT1 on public.
+3. **Locked 2018 holdout** check for both picks (`--holdout`), once.
+4. **`Short_notebook_1.ipynb` / `Short_notebook_2.ipynb`:** all code inline, from the raw
+   data, ≤ 12 h on 4 cores.
+5. **Report:** EDA; ≥ 2 predictor types (LightGBM + XGBoost); feature engineering (the
+   journal's per-step score table, with the Kjela/Hyljelihyl bug as a case study); model
+   interpretation (SHAP / feature importance).
+
+Deadline **2026-11-08 22:00**.
+
+The original plan below is kept for reference; its first three rows are done.
 
 **Decision (2026-10-16): no long autonomous loop.** The earlier plan (an unattended 24 h
 `/loop` with hooks, see `research/04_autonomous_experiment_loop.md`) is dropped:
@@ -699,10 +722,18 @@ are the cheapest points in the project.
 - ❓ Course rules on using other teams' public repos and external SINTEF data, and whether
   the public/private split is random or by time. **Ask the course staff.**
 
-## 9. Handoff: LP accuracy loop (2026-10-19, in progress)
+## 9. Handoff: LP accuracy loop (2026-10-19 – 2026-10-21, closed)
+
+**Conclusion (2026-10-21): the LP accuracy loop is closed.** The end valuation is now
+consistent for every reservoir (`analysis/end_value_check.py`), and the re-tested options
+(head_iterations, basis "sea" / "local", integer_units, flow_costs "yaml_curves") don't
+help. Further gains need new modelling, not bug fixes. The only remaining idea worth a
+time-boxed try: a joint fill feature for tunnel-linked lakes (Venemo/Totak/Vaamarvatn,
+Bordalsvatn/Foersvatn), since `lps2_fill` for Vinje (Vaamarvatn) is mostly 0. Next phase:
+§7.
 
 **Where we are (2026-10-21).** Best model: exp 029 (`configs/exp_029_main_river.yaml`),
-local CV **0.9912**, not yet submitted. Before it: exp 024, CV 0.9865, public LB 0.99099;
+local CV **0.9912**, public LB **0.99424**. Before it: exp 024, CV 0.9865, public LB 0.99099;
 exp 021, CV 0.9850, LB 0.99067 (VT1, the highest VT: 0.99040; leader 0.99795). Details per
 run in `experiments/journal.md`. Model tuning, blends, smoothing and stacking-style
 post-processing no longer help (exps 016, 018, 020, 022); every real gain has come from
@@ -787,6 +818,44 @@ unchanged), used by the group `relaxed_lp_shop2` (prefix `lps2_`).
   Hyljelihyl, so its gain comes from a better Vinjevatn dual (its downstream credit).
 - Lesson: check the other places that pick "the first" edge from the YAML before trusting
   an LP variant's routing.
+
+**Loop after the main_river fix (2026-10-21).** New base = relaxed_lp_shop2's options
+(min_flow, commitment, production_curves, flow_costs "yaml", main_river): unit_on 0.9447,
+margin 0.9739. Options dropped before the fix, re-tested on this base:
+
+| on top of the new base | unit_on | margin | verdict |
+|---|---|---|---|
+| none (relaxed_lp_shop2) | 0.9447 | 0.9739 | base |
+| head_iterations 1 | 0.9424 | 0.9738 | drop (Hogga −0.014, Haukeli −0.021, Vinje G3 −0.007 unit_on) |
+| basis "sea" | 0.7407 | 0.7989 | drop (still fails) |
+| basis "local" | 0.6465 | 0.7371 | drop |
+| integer_units (MILP) | 0.9107 | 0.9739 | drop (1.4 s per case per core; whole-number units-on ranks worse, as before) |
+| flow_costs "yaml_curves" (new, below) | 0.9455 | 0.9737 | no clear gain |
+
+So "sea" did not fail because of the Hyljelihyl bug: valuing everything down to the sea
+at one reservoir's water value is simply wrong for these synthetic water values.
+
+End-valuation consistency check (`analysis/end_value_check.py`, 50 train cases; it
+flags the old bug: Hyljelihyl's last-hour dual was 1.5× its end value, at its lower bound
+in 94% of cases). With main_river, wherever a reservoir does not end at a volume bound its
+last-hour dual equals its end value (ratio 1.000 for all 16), and no river or tunnel offers
+an end-of-horizon arbitrage (ev(target) − flow cost ≤ ev(source) on every edge). No
+further routing bug. Remaining oddities, all ties rather than mismatches:
+- The four main rivers with a `flow_cost_curve` (r_Staavatn, r_Langesae, r_Langeidvatn,
+  r_Hyljelihyl) cost 0 in the LP, so it moved their water downstream arbitrarily, mostly in
+  the last 24 h (r_Langesae: 22 of 25 Mm³; Foersvatn ended full in 68% of cases). Option
+  `flow_costs="yaml_curves"` charges them the curve's average cost (≈ 1.76 per m³/s·h,
+  reading y as total cost per hour at flow x): the dumping stops (r_Langesae 25 → 0.1 Mm³),
+  but the AUC doesn't move (+0.0008 unit_on, −0.0002 margin). Kept as an option, not used.
+- Tunnel-joined lakes (Venemo/Totak/Vaamarvatn, Bordalsvatn/Foersvatn) share one end
+  value, so how the water is split between them is arbitrary: Venemo and Vaamarvatn end
+  empty in most cases. Harmless for the duals, but `lps2_fill` for Vinje (Vaamarvatn) is
+  mostly 0 and so not a real fill level. A joint fill of the tunnel group would be the
+  honest feature.
+- Vinjevatn ends full in 60% of cases (mean in-horizon dual 0.78 × its end value): the
+  +7 d water value is above what the week's prices pay, so the LP saves water there. That
+  is SHOP-like behaviour, not a bug.
+No exp 030: nothing cleared the loop's ≥ 0.003 bar.
 
 **Steps, in order:**
 1. Each new option alone on top of the baseline: `production_curves`, `flow_costs: "yaml"`,

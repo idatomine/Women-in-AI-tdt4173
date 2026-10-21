@@ -30,6 +30,11 @@ Options (solve_all / solve_case keyword arguments):
   (instead of one constant k at the best efficiency).
 - flow_costs="yaml": the rivers' flow_cost_const from the YAML (spill 1000, bypass 10 per
   m³/s·h) instead of the tiny penalty, so spilling is a last resort as in SHOP.
+  flow_costs="yaml_curves": the same, plus the four main rivers that have a
+  flow_cost_curve instead (r_Staavatn, r_Langesae, r_Langeidvatn, r_Hyljelihyl; cost 0
+  with "yaml") at the curve's average cost, y / x at its last point (≈ 1.76 per m³/s·h).
+  Without it, moving water down these rivers is free, so the LP shifts it arbitrarily
+  (e.g. Langesae into Foersvatn in the last hours).
 - head_iterations: re-solve with the head at each reservoir's mean level in the previous
   solution (SHOP's successive linearisation, in its simplest form).
 - integer_units (needs commitment): after the LP, solve the same problem as a MILP with
@@ -84,6 +89,7 @@ class Edge:
     lower: float = 0.0
     via: tuple[str, ...] = ()  # rivers the water passes on its way to the target
     flow_cost: float = 0.0  # the YAML's flow_cost_const (rivers)
+    curve_cost: float = 0.0  # average cost of the YAML's flow_cost_curve, if the river has one
     plant: int | None = None  # for plant segments: index into Network.plants
 
 
@@ -202,8 +208,10 @@ def build_network(segments: int = 1, main_river: bool = False) -> Network:
             target = index[target] if target else None
             if source != target:
                 river = model["river"].get(c["to"], {})
+                curve = river.get("flow_cost_curve")
                 edges.append(Edge(c["to"], "river", source, target, upper=river.get("max_flow_const", np.inf),
-                                  via=(c["to"],) + via, flow_cost=river.get("flow_cost_const", 0.0)))
+                                  via=(c["to"],) + via, flow_cost=river.get("flow_cost_const", 0.0),
+                                  curve_cost=curve["y"][-1] / curve["x"][-1] if curve else 0.0))
     for r in reservoirs:
         edges.append(Edge(f"overflow_{r}", "overflow", index[r], None, upper=np.inf))
 
@@ -357,9 +365,10 @@ def _solve_once(net, levels, prices, inflow, start_volume, end_water_value, min_
     capacity_mw = np.array([(s * w).sum() for s, w in pieces])
     k_avg = capacity_mw / capacity_flow  # MW per m³/s at full load
 
-    if flow_costs == "yaml":
-        cost = np.array([e.flow_cost if e.kind == "river" else OVERFLOW_PENALTY if e.kind == "overflow" else 0.0
-                         for e in net.edges])
+    if flow_costs in ("yaml", "yaml_curves"):
+        with_curves = flow_costs == "yaml_curves"
+        cost = np.array([e.flow_cost + with_curves * e.curve_cost if e.kind == "river"
+                         else OVERFLOW_PENALTY if e.kind == "overflow" else 0.0 for e in net.edges])
     else:
         cost = np.array([{"river": RELEASE_PENALTY, "overflow": OVERFLOW_PENALTY}.get(e.kind, 0.0) for e in net.edges])
     flow_cost = np.tile(cost, (HOURS, 1)) - prices[:, None] * k[None, :]  # income from production
