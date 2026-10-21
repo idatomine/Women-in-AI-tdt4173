@@ -701,8 +701,9 @@ are the cheapest points in the project.
 
 ## 9. Handoff: LP accuracy loop (2026-10-19, in progress)
 
-**Where we are.** Best model: exp 021 (`configs/exp_021_lp_commitment.yaml`), local CV
-**0.9850**, public LB **0.99067** (VT1, the highest VT: 0.99040; leader 0.99795). Details per
+**Where we are (2026-10-21).** Best model: exp 029 (`configs/exp_029_main_river.yaml`),
+local CV **0.9912**, not yet submitted. Before it: exp 024, CV 0.9865, public LB 0.99099;
+exp 021, CV 0.9850, LB 0.99067 (VT1, the highest VT: 0.99040; leader 0.99795). Details per
 run in `experiments/journal.md`. Model tuning, blends, smoothing and stacking-style
 post-processing no longer help (exps 016, 018, 020, 022); every real gain has come from
 making the LP more like SHOP (water balance +0.004, min flow +0.0013, start costs +0.001).
@@ -743,7 +744,8 @@ Baseline to beat (exp 021's LP, options `{"min_flow": true, "commitment": true}`
 | production_curves | 0.8745 | 0.9237 |
 | flow_costs "yaml" | 0.8626 | 0.9251 |
 | head_iterations 1 | 0.8452 | 0.9195 (dropped) |
-| **production_curves + flow_costs "yaml"** | **0.8885** | **0.9289** |
+| production_curves + flow_costs "yaml" | 0.8885 | 0.9289 |
+| **same + main_river (bug fix, below)** | **0.9447** | **0.9739** |
 | same + basis "sea" | 0.7264 | 0.7886 ("sea" still fails) |
 
 | curves + yaml costs + integer_units (MILP) | 0.8470 | 0.9289 (dropped) |
@@ -765,10 +767,26 @@ LightGBM tuning on exp 024 (exps 028a–e: num_leaves 31/255, min_child_samples 
 colsample 0.5): all −0.0006 … −0.0000. The original settings are near-optimal; gains must
 come from the inputs. (028f, one model per unit with the full LP features: see the journal.)
 
-Open lead: Kjela's LP margin is poor (0.69 vs 0.955 for its simple rule). Water Kjela
-releases into the tiny Hyljelihyl can continue via r_Hyljelihyl → Venemo → Totak → Vinje,
-a more valuable route than the one its end value assumes, so its downstream credit is
-probably inflated (the same problem as the "net" rule in §3).
+**Bug fixed (2026-10-21): Hyljelihyl's end value took the wrong river.** In
+`build_network`, `main_outlet(r)` picked the *first* river leaving a reservoir. For
+Hyljelihyl that is the bypass b_Hyljelihyl → Vinjevatn, but the YAML marks r_Hyljelihyl
+(→ Venemo → Totak → Vaamarvatn → Vinje → …) as `main_river: 1`. So `_end_values` valued
+water left in Hyljelihyl, and in everything above it (Foersvatn, Kjelavatn, …), as if it
+skipped Vinje, while inside the horizon the LP could route it via r_Hyljelihyl and earn the
+Vinje leg. The LP over-credited running Kjela and distorted the duals in the
+Totak/Vinje/Tokke chain. Hyljelihyl is the only reservoir whose rivers lead to different
+targets: Staavatn and Langesae switch to their main river too, but it ends in the same lake.
+Fix: option `main_river=True` in `relaxed_lp.py` (default off, so older groups are
+unchanged), used by the group `relaxed_lp_shop2` (prefix `lps2_`).
+- LP loop: unit_on 0.8885 → **0.9447**, margin 0.9289 → **0.9739** (Kjela margin
+  0.690 → 0.976, Tokke G1 0.959 → 0.984, Vinje G1 0.931 → 0.977, Songa 0.934 → 0.990).
+- **exp 029 (relaxed_lp_shop2 instead of relaxed_lp_shop): CV 0.9912, +0.0047 over exp
+  024, all folds up** (A +0.0034, B +0.0020, C +0.0039, D +0.0095). Per unit (mean A–D):
+  Haukeli 0.923 → 0.974 (2019: 0.843 → 0.976), Kjela 0.977 → 0.989, Vinje G1–3 +0.004 …
+  0.005, Tokke G1–4 +0.002 … 0.004. Haukeli (Vatjern → Haukeli → Vinjevatn) is not above
+  Hyljelihyl, so its gain comes from a better Vinjevatn dual (its downstream credit).
+- Lesson: check the other places that pick "the first" edge from the YAML before trusting
+  an LP variant's routing.
 
 **Steps, in order:**
 1. Each new option alone on top of the baseline: `production_curves`, `flow_costs: "yaml"`,
@@ -789,8 +807,8 @@ probably inflated (the same problem as the "net" rule in §3).
 
 **Pitfalls when changing the LP:**
 - Feature caches are keyed on the group's own file and `src/data.py` only. The variant
-  groups (`relaxed_lp_minflow`, `relaxed_lp_uc`, `tokke_vinje`, `cascade`,
-  `storage_upstream`) import `relaxed_lp.py`, so **after changing `relaxed_lp.py`, delete
+  groups (`relaxed_lp_minflow`, `relaxed_lp_uc`, `relaxed_lp_shop`, `relaxed_lp_shop2`,
+  `tokke_vinje`, `cascade`, `storage_upstream`) import `relaxed_lp.py`, so **after changing `relaxed_lp.py`, delete
   their caches** (`rm features/relaxed_lp_uc__*` etc.) or they keep stale features.
 - Don't edit `relaxed_lp.py` while an experiment is building an LP cache: the worker
   processes read the file from disk.

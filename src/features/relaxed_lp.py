@@ -36,6 +36,10 @@ Options (solve_all / solve_case keyword arguments):
   whole numbers of units on (BRIEFING §4.5 Level 3), with a time limit per case.
   production / units_on / fill come from the MILP; margin and water_value stay the LP's
   duals (a MILP has none).
+- main_river (solve_all only; it changes the network): a reservoir's end value follows
+  the river marked `main_river` in the YAML instead of the first river found. Matters
+  for Hyljelihyl only: r_Hyljelihyl → Venemo → Totak → Vinje …, not the bypass
+  b_Hyljelihyl → Vinjevatn that skips Vinje.
 
 Uses only the §2.0 case inputs: prices and inflows over the 168 h, start-day volumes,
 the +7 d water values and the constraint tables.
@@ -128,7 +132,7 @@ def _merged(name: str) -> str:
 
 
 @lru_cache(maxsize=4)
-def build_network(segments: int = 1) -> Network:
+def build_network(segments: int = 1, main_river: bool = False) -> Network:
     topology = yaml.safe_load((EXTENDED_DIR / "Tokke_Vinje_topology.yaml").read_text())
     model, connections = topology["model"], topology["connections"]
     targets = {}
@@ -204,11 +208,16 @@ def build_network(segments: int = 1) -> Network:
         edges.append(Edge(f"overflow_{r}", "overflow", index[r], None, upper=np.inf))
 
     def main_outlet(r: int) -> int | None:
-        """Plant if the reservoir feeds one, else a tunnel, else the first river onwards."""
+        """Plant if the reservoir feeds one, else a tunnel, else the first river onwards.
+        With main_river, a river marked `main_river` in the YAML wins over the others
+        (Hyljelihyl: r_Hyljelihyl → Venemo, not the bypass b_Hyljelihyl → Vinjevatn)."""
         for kind in ("plant", "tunnel", "river"):
-            for e, edge in enumerate(edges):
-                if edge.kind == kind and edge.source == r and (kind == "plant" or edge.target is not None):
-                    return e
+            candidates = [e for e, edge in enumerate(edges)
+                          if edge.kind == kind and edge.source == r and (kind == "plant" or edge.target is not None)]
+            if main_river and kind == "river":
+                candidates.sort(key=lambda e: not model["river"].get(edges[e].name, {}).get("main_river"))
+            if candidates:
+                return candidates[0]
         return None
 
     incidence = np.zeros((len(reservoirs), len(edges)))
@@ -464,7 +473,8 @@ def _solve_once(net, levels, prices, inflow, start_volume, end_water_value, min_
 
 def _solve_chunk(args):
     options, inputs = args  # inputs: case_inputs' arrays, sliced to a chunk
-    net = build_network(CURVE_SEGMENTS if options.get("production_curves") else 1)
+    options = dict(options)
+    net = build_network(CURVE_SEGMENTS if options.get("production_curves") else 1, options.pop("main_river", False))
     return [solve_case(net, *case, **options) for case in zip(*inputs)]
 
 
@@ -504,8 +514,9 @@ def case_inputs(data, net: Network, case_idx: np.ndarray):
 def solve_all(data, case_idx: np.ndarray, workers: int | None = None, min_flow: bool = False,
               **options) -> dict[str, np.ndarray]:
     """Solve the given cases in parallel. Returns arrays (case, hour, plant); NaN if an LP
-    failed. `options` are solve_case's keyword arguments (basis, commitment, ...)."""
-    net = build_network(CURVE_SEGMENTS if options.get("production_curves") else 1)
+    failed. `options` are solve_case's keyword arguments (basis, commitment, ...) and
+    main_river."""
+    net = build_network(CURVE_SEGMENTS if options.get("production_curves") else 1, options.get("main_river", False))
     inputs = case_inputs(data, net, case_idx)
     if not min_flow:
         inputs = inputs[:-1]  # drop required_flow
