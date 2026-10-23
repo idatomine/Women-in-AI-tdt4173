@@ -75,7 +75,7 @@ journal. Submit sparingly (≤ 2 per day); the private leaderboard decides the g
 | `run.py` | Starts an experiment: reads the config, trains on each validation year, prints scores, writes the journal row. |
 | `data.py` | Loads all CSV files, for the train cases (2015–2022) and the test cases (2023–24). |
 | `cv.py` | The validation rules: which years validate, the 7-day buffer, scoring with `kaggle_metric.py`, and the acceptance rule. **Don't change it during experiments**, or scores stop being comparable. |
-| `models.py` | Trains LightGBM and predicts. Other model types (XGBoost) go here. |
+| `models.py` | Trains LightGBM and predicts. Other model types (XGBoost) go here. Training is deterministic by default (seed from the config, 4 threads), so two runs give identical predictions. |
 | `submit.py` | Trains on all years and writes a checked Kaggle file. |
 | `__init__.py` | Empty marker so Python treats `src/` as a package. |
 
@@ -109,6 +109,8 @@ Added during the experiments (see the journal for which ones were kept):
 | `relaxed_lp_uc` | The min-flow LP plus a relaxed unit commitment: units on, p_min, start/stop costs (features `lpu_*`); used from exp 021 |
 | `relaxed_lp_shop` | The commitment LP plus YAML efficiency curves, head losses and SHOP's spill/bypass costs (features `lps_*`); used from exp 024 |
 | `storage_upstream` | Fill of the real storage lake behind tiny pass-through reservoirs (Haukeli → Langeidvatn) |
+| `relaxed_lp_shop2` | `relaxed_lp_shop` with the Hyljelihyl routing fix (`main_river`; features `lps2_*`); used from exp 029, **final model** |
+| `lp_extra` | Extra outputs of the same LP: unclipped units-on gap, plant share on, joint fill of tunnel-joined lakes (`lpx_*`); tested in exp 031, not used |
 
 Config options besides `features:`:
 - `drop_features:` removes single features by name from the selected groups.
@@ -116,6 +118,8 @@ Config options besides `features:`:
 - `model: per_unit: true` trains one model per unit instead of one pooled model.
 - `model: type: blend` averages several member models (`members:`, each a model config
   with a `weight`).
+- `model: slow_solver: {seconds: 900, weight: 0.3}` down-weights cases from slow SHOP runs
+  in training (exp 032; not used).
 
 To add a group, create `src/features/<name>.py` with a `build(data)` function (see the
 existing files and the docstring in `src/features/__init__.py`), then list it in a config.
@@ -145,3 +149,16 @@ python -m venv .venv
 ```
 
 On macOS with conda, LightGBM also needs OpenMP: `conda install -c conda-forge llvm-openmp`.
+
+## Final submissions and short notebooks
+
+The two selected Kaggle predictions are exp 029 (LightGBM) and exp 030 (XGBoost), both on
+the same features. `Short_notebook_1.ipynb` and `Short_notebook_2.ipynb` reproduce them from
+the raw data with all code inline, as the course requires. **Don't edit the notebooks by
+hand:** they are generated from `src/` and the two configs by
+
+```bash
+.venv/bin/python tools/build_notebooks.py
+```
+
+so rerun it after any change to the code they use.

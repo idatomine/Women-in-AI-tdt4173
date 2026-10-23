@@ -1,6 +1,6 @@
-# Experiment 024: exp 021, but with the more SHOP-like LP from the BRIEFING §9 loop:
-# production curves from the YAML efficiency curves and head losses, plus SHOP's river
-# flow costs. LP sanity check: unit_on 0.8473 → 0.8885, margin 0.9207 → 0.9289.
+# Experiment 029: exp 024 with the Hyljelihyl routing fix (main_river) in the LP
+# (BRIEFING §9). LP sanity check: unit_on 0.8885 → 0.9447, margin 0.9289 → 0.9739.
+# Current best and final pick #1.
 
 name: exp_029_main_river
 change: "exp 024 with main_river in the LP (Hyljelihyl valued along r_Hyljelihyl, not the bypass): relaxed_lp_shop2 instead of relaxed_lp_shop"

@@ -74,6 +74,7 @@ GENERATOR_EFFICIENCY = 0.98  # default model only; production_curves uses the YA
 CURVE_SEGMENTS = 4  # linear pieces per plant with production_curves
 MIN_FLOW_RIVERS = ["b_Kjelavatn", "b_Hyljelihyl", "b_Vinjevatn", "b_Byrtevatn", "b_Bandak", "r_Vest_Vassdraget"]
 END_VALUE_BASIS = "path"  # how leftover water is valued; see _end_values
+WORKERS = None  # LP worker processes; None = all cores but one, 1 = in-process (notebooks)
 PRIORITY = {"Tokke_G1": 1, "Tokke_G3": 2, "Tokke_G4": 3, "Tokke_G2": 4,
             "Vinje_G1": 1, "Vinje_G2": 2, "Vinje_G3": 3}  # as in relaxed_dp
 
@@ -344,7 +345,7 @@ def solve_case(net: Network, prices: np.ndarray, inflow: np.ndarray, start_volum
                              integer_units, milp_time_limit)
         if result is None:
             return None
-        mean_volume = result.pop("_volumes").mean(axis=0)
+        mean_volume = result["_volumes"].mean(axis=0)  # kept in the result for solve_all(volumes=True)
         levels = np.array([np.interp(v, *curve) for v, curve in zip(mean_volume, net.level_curves)])
     return result
 
@@ -521,26 +522,36 @@ def case_inputs(data, net: Network, case_idx: np.ndarray):
 
 
 def solve_all(data, case_idx: np.ndarray, workers: int | None = None, min_flow: bool = False,
-              **options) -> dict[str, np.ndarray]:
+              volumes: bool = False, **options) -> dict[str, np.ndarray]:
     """Solve the given cases in parallel. Returns arrays (case, hour, plant); NaN if an LP
     failed. `options` are solve_case's keyword arguments (basis, commitment, ...) and
-    main_river."""
+    main_river. With `volumes=True` it also returns the LP's volume trajectories
+    (case, hour, reservoir) as "volumes", with the network's "reservoirs" and "max_vol"."""
     net = build_network(CURVE_SEGMENTS if options.get("production_curves") else 1, options.get("main_river", False))
     inputs = case_inputs(data, net, case_idx)
     if not min_flow:
         inputs = inputs[:-1]  # drop required_flow
-    workers = workers or max(1, (os.cpu_count() or 2) - 1)
+    workers = workers or WORKERS or max(1, (os.cpu_count() or 2) - 1)
     chunks = np.array_split(np.arange(len(case_idx)), workers * 4)
-    with ProcessPoolExecutor(workers) as pool:
-        results = [r for chunk in pool.map(_solve_chunk, [(options, [a[c] for a in inputs]) for c in chunks]) for r in chunk]
+    jobs = [(options, [a[c] for a in inputs]) for c in chunks]
+    if workers == 1:  # in-process: worker processes can't import functions defined in a notebook
+        results = [r for job in jobs for r in _solve_chunk(job)]
+    else:
+        with ProcessPoolExecutor(workers) as pool:
+            results = [r for chunk in pool.map(_solve_chunk, jobs) for r in chunk]
 
     failed = sum(r is None for r in results)
     if failed:
         print(f"    {failed} of {len(results)} LPs failed; their features are NaN")
     keys = ["production", "margin", "water_value", "fill"] + (["units_on"] if options.get("commitment") else [])
     empty = np.full((HOURS, len(net.plants)), np.nan)
-    return {key: np.stack([r[key] if r is not None else empty for r in results]) for key in keys} | {
+    out = {key: np.stack([r[key] if r is not None else empty for r in results]) for key in keys} | {
         "plants": net.plants}
+    if volumes:
+        no_volumes = np.full((HOURS, len(net.reservoirs)), np.nan)
+        out |= {"volumes": np.stack([r["_volumes"] if r is not None else no_volumes for r in results]),
+                "reservoirs": net.reservoirs, "max_vol": net.max_vol}
+    return out
 
 
 def build(data):

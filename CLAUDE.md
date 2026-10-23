@@ -28,6 +28,9 @@ facts, the validation protocol, the feature backlog and the pitfalls.
   - `models.py`: model wrappers; add XGBoost etc. here.
   - `run.py`: runs a config on folds A–D and logs it.
   - `submit.py`: trains on 2015–2022 and writes a checked submission to `submissions/`.
+- `Short_notebook_1.ipynb` / `Short_notebook_2.ipynb`: the course deliverables (exp 029 /
+  exp 030), **generated** from `src/` by `tools/build_notebooks.py`. Never edit them by
+  hand; rebuild them after changing any code they use.
 - `configs/`: one YAML per experiment (feature groups on/off, model settings).
 - `experiments/journal.md`: one row per run, auto-appended; Decision and Public LB filled
   by hand. `experiments/results.csv` is the machine-readable log.

@@ -1,0 +1,41 @@
+# Experiment 030: exp 029's features with XGBoost (exp 012's matched settings). A model of
+# a different type for the second final pick (BRIEFING §5b, §7).
+
+name: exp_030_xgb_main_river
+change: "exp 029 with XGBoost instead of LightGBM (same features, settings matched as in exp 012): candidate for final pick #2"
+compare_to: exp_029_main_river
+
+features:            # same groups as exp 001
+  - price_shape
+  - calendar
+  - water_value
+  - hydro
+  - unit_static
+  - wv_margin
+  - scarcity
+  - case_economics
+  - relaxed_dp
+  - tokke_vinje
+  - relaxed_lp_shop2
+
+drop_features:       # single features removed from the groups above
+  - price
+  - price_wkmean
+  - wv_up_end
+  - wv_up_start
+  - wv_dn_end
+  - net_wv
+
+model:
+  type: xgboost
+  row_share: 0.35
+  seed: 0
+  params:            # passed straight to xgboost.XGBClassifier; matched to exp 009's LightGBM
+    n_estimators: 800
+    learning_rate: 0.05
+    grow_policy: lossguide   # leaf-wise like LightGBM
+    max_leaves: 127
+    max_depth: 0
+    min_child_weight: 50     # ≈ LightGBM's min_child_samples 200 (hessian ≤ 0.25 per row)
+    subsample: 0.8
+    colsample_bytree: 0.8

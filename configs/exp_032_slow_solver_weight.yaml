@@ -1,0 +1,43 @@
+# Experiment 032: slow SHOP runs cluster near a time limit and may have suboptimal labels
+# (BRIEFING §2.3). exp 029's OOF AUC on them is far lower (2022: 0.932 vs 0.994).
+
+name: exp_032_slow_solver_weight
+change: "exp 029 with cases from slow SHOP runs (≥ 900 s, 6%) down-weighted to 0.3 in training (possible label noise)"
+compare_to: exp_029_main_river
+
+features:            # same groups as exp 001
+  - price_shape
+  - calendar
+  - water_value
+  - hydro
+  - unit_static
+  - wv_margin
+  - scarcity
+  - case_economics
+  - relaxed_dp
+  - tokke_vinje
+  - relaxed_lp_shop2
+
+drop_features:       # single features removed from the groups above
+  - price
+  - price_wkmean
+  - wv_up_end
+  - wv_up_start
+  - wv_dn_end
+  - net_wv
+
+model:               # unchanged from exp 001
+  type: lightgbm
+  row_share: 0.35
+  seed: 0
+  slow_solver:       # training weight only, never a feature (BRIEFING §4.2)
+    seconds: 900
+    weight: 0.3
+  params:
+    n_estimators: 800
+    learning_rate: 0.05
+    num_leaves: 127
+    min_child_samples: 200
+    subsample: 0.8
+    subsample_freq: 1
+    colsample_bytree: 0.8

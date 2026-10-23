@@ -13,17 +13,44 @@ import numpy as np
 import pandas as pd
 import xgboost as xgb
 
+from src.data import KERNEL_DIR
 
-def _train(model_cfg: dict, X: np.ndarray, y: np.ndarray, names: list[str], categorical: list[str]):
+
+N_JOBS = 4  # the grading PC has at most 4 cores; a fixed thread count keeps results reproducible
+
+
+def case_weights(model_cfg: dict) -> np.ndarray | None:
+    """Training weight per labelled case, or None for equal weights.
+
+    `slow_solver: {seconds: s, weight: w}` gives cases whose SHOP run took ≥ s seconds the
+    weight w: slow runs cluster near a time limit and may have suboptimal labels (BRIEFING
+    §2.3). total_calculation_time is used only as a training weight, never as a feature.
+    """
+    slow = model_cfg.get("slow_solver")
+    if slow is None:
+        return None
+    seconds = pd.read_csv(KERNEL_DIR / "Unit_commitment_decisions.csv",
+                          usecols=["total_calculation_time"])["total_calculation_time"].to_numpy()
+    return np.where(seconds >= slow["seconds"], slow["weight"], 1.0)
+
+
+def _train(model_cfg: dict, X: np.ndarray, y: np.ndarray, names: list[str], categorical: list[str],
+           weight: np.ndarray | None = None):
+    seed = model_cfg.get("seed", 0)
     if model_cfg["type"] == "lightgbm":
-        model = lgb.LGBMClassifier(verbose=-1, **model_cfg["params"])
-        model.fit(X, y, feature_name=names, categorical_feature=categorical)
+        # Fixed seed and thread count plus deterministic=True / force_row_wise=True make two
+        # runs give byte-identical predictions (needed for the short notebooks)
+        params = {"random_state": seed, "n_jobs": N_JOBS, "deterministic": True,
+                  "force_row_wise": True, **model_cfg["params"]}
+        model = lgb.LGBMClassifier(verbose=-1, **params)
+        model.fit(X, y, sample_weight=weight, feature_name=names, categorical_feature=categorical)
         return model
     if model_cfg["type"] == "xgboost":
         # The unit ID is used as an ordinary numeric feature here (no categorical support
         # for plain numpy input); trees can still split on it.
-        model = xgb.XGBClassifier(tree_method="hist", importance_type="gain", n_jobs=-1, **model_cfg["params"])
-        model.fit(X, y)
+        params = {"random_state": seed, "n_jobs": N_JOBS, **model_cfg["params"]}
+        model = xgb.XGBClassifier(tree_method="hist", importance_type="gain", **params)
+        model.fit(X, y, sample_weight=weight)
         return model
     raise ValueError(f"unknown model type: {model_cfg['type']}")
 
@@ -73,7 +100,10 @@ def fit(model_cfg: dict, X: np.ndarray, Y: np.ndarray, case_idx: np.ndarray, nam
     y_train = Y[case_idx].ravel()
     keep = rng.random(len(y_train)) < model_cfg["row_share"]
     categorical = ["unit"] if "unit" in names else []
-    return _train(model_cfg, X_train[keep], y_train[keep], names, categorical)
+    weights = case_weights(model_cfg)
+    if weights is not None:
+        weights = np.broadcast_to(weights[case_idx, None, None], Y[case_idx].shape).ravel()[keep]
+    return _train(model_cfg, X_train[keep], y_train[keep], names, categorical, weights)
 
 
 def predict(model, X: np.ndarray, case_idx: np.ndarray) -> np.ndarray:

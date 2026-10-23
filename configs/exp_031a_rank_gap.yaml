@@ -1,0 +1,42 @@
+# Experiment 031a: lps2_unit_on clips units-on − (rank − 1) to [0, 1], so Vinje G3 can't tell
+# 1.8 units from 0.2. Add the unclipped gap and the plant's share on (src/features/lp_extra.py).
+
+name: exp_031a_rank_gap
+change: "exp 029 + lpx_rank_gap and lpx_plant_on (LP units-on minus the unit's rank, unclipped; plant share on)"
+compare_to: exp_029_main_river
+
+features:            # same groups as exp 001
+  - price_shape
+  - calendar
+  - water_value
+  - hydro
+  - unit_static
+  - wv_margin
+  - scarcity
+  - case_economics
+  - relaxed_dp
+  - tokke_vinje
+  - relaxed_lp_shop2
+  - lp_extra
+
+drop_features:       # single features removed from the groups above
+  - price
+  - price_wkmean
+  - wv_up_end
+  - wv_up_start
+  - wv_dn_end
+  - net_wv
+  - lpx_joint_fill
+
+model:               # unchanged from exp 001
+  type: lightgbm
+  row_share: 0.35
+  seed: 0
+  params:
+    n_estimators: 800
+    learning_rate: 0.05
+    num_leaves: 127
+    min_child_samples: 200
+    subsample: 0.8
+    subsample_freq: 1
+    colsample_bytree: 0.8

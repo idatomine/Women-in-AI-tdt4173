@@ -651,13 +651,36 @@ Never pick a submission because it has the highest public LB alone.
 **Status 2026-10-21: the feature/LP phase is done.** Best model exp_029_main_river, CV
 0.9912, public LB 0.99424 (§9). No more feature or LP work unless the time-boxed
 joint-fill idea in §9 is tried. **Next phase, in this order:**
-1. **Determinism for exp_029:** LightGBM with a fixed `random_state`, `n_jobs` 4,
-   `deterministic=True` and `force_row_wise=True`; pinned `requirements.txt`. Run the
-   submission twice and check that the two files are identical.
-2. **Second final pick:** a multi-seed average of exp_029. It must also clear VT1 on public.
-3. **Locked 2018 holdout** check for both picks (`--holdout`), once.
-4. **`Short_notebook_1.ipynb` / `Short_notebook_2.ipynb`:** all code inline, from the raw
-   data, ≤ 12 h on 4 cores.
+1. ✅ **Determinism for exp_029 (2026-10-22):** `src/models.py` now defaults to a fixed
+   `random_state`, `n_jobs` 4, `deterministic=True` and `force_row_wise=True` (XGBoost:
+   fixed `random_state`, `n_jobs` 4). Two builds from scratch (LP re-solved, model
+   retrained) gave byte-identical submissions; the LP output was identical too. CV
+   unchanged (0.9912). End-to-end time 3 min, 3.7 GB peak. The new file
+   `submissions/exp_029_main_river.csv` still has to be uploaded to Kaggle to confirm it
+   scores about 0.99424.
+2. **Second final pick (revised 2026-10-22):** a model that *differs* from exp_029 (§5b),
+   i.e. XGBoost, or a LightGBM + XGBoost blend, on exp_029's features. A multi-seed average
+   of exp_029 makes the same errors and gives little insurance; use it only as a fallback.
+   It must clear VT1 on public with a clear margin.
+   - **exp_030_xgb_main_river (2026-10-22): CV 0.9910** (029: 0.9912), deterministic,
+     `submissions/exp_030_xgb_main_river.csv`. Its test predictions correlate 0.997 with
+     029's: the shared LP features dominate, so the insurance is modest but real.
+   - **Public LB (2026-10-22): exp_029 (deterministic re-run) 0.99414, exp_030 0.99429.**
+     Both clear VT1 (0.99040) by ≈ 0.004. **Final picks: exp_029 and exp_030.**
+   - Last improvement round (2026-10-22), all within noise, so the model is frozen:
+     029 + 030 blend +0.0001 (same errors); exp 031a unclipped LP rank gap for Vinje G2/G3
+     −0.0001; exp 031b joint fill of tunnel-joined lakes ±0.0000 (closes the §9 idea);
+     exp 032 slow-solver cases down-weighted +0.0000. `lp_extra` and the `slow_solver`
+     weight option stay in the code, unused.
+3. ✅ **Locked 2018 holdout (2026-10-22):** exp_029 0.9877, exp_030 0.9876, inside the A–D
+   range (0.9868–0.9941). No sign of overfitting the folds. Don't score it again.
+4. ✅ **`Short_notebook_1.ipynb` / `Short_notebook_2.ipynb` (2026-10-22):** generated from
+   `src/` by `tools/build_notebooks.py` (never edit by hand). Run in a fresh venv built
+   only from `requirements.txt`, in a folder with only the notebooks and the raw data:
+   both reproduce `submissions/exp_029_main_river.csv` / `exp_030_xgb_main_river.csv`
+   byte for byte, in about 9 min each (LP in-process on one core, LightGBM/XGBoost on
+   4 threads). **Still to do:** fill in names, student IDs and the Kaggle team name
+   (`TEAM_HEADER` in the script), rebuild, and select both submissions on Kaggle.
 5. **Report:** EDA; ≥ 2 predictor types (LightGBM + XGBoost); feature engineering (the
    journal's per-step score table, with the Kjela/Hyljelihyl bug as a case study); model
    interpretation (SHAP / feature importance).
