@@ -31,6 +31,9 @@ facts, the validation protocol, the feature backlog and the pitfalls.
 - `Short_notebook_1.ipynb` / `Short_notebook_2.ipynb`: the course deliverables (exp 029 /
   exp 030), **generated** from `src/` by `tools/build_notebooks.py`. Never edit them by
   hand; rebuild them after changing any code they use.
+- `Report.ipynb`: the report deliverable (graders don't run it, so save it with outputs).
+  Currently a disposition (📝 cells) plus complete figure/table code, run from the repo root
+  on the cached features and `experiments/` predictions. Edit it directly.
 - `configs/`: one YAML per experiment (feature groups on/off, model settings).
 - `experiments/journal.md`: one row per run, auto-appended; Decision and Public LB filled
   by hand. `experiments/results.csv` is the machine-readable log.
