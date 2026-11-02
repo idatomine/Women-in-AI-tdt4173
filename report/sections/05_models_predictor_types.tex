@@ -1,11 +1,105 @@
 \section{Models (predictor types)}\label{sec:5}
 
-\begin{disposition}
-We will compare all predictor types we tried \emph{on the same folds}, from no learning at all to the final models (Table~\ref{tab:5.1}), and explain why some work better than others.
-\end{disposition}
+We used two kinds of predictors. \emph{Optimisation models} describe the physics and economics of the watercourse and compute a schedule directly, without learning from the labels. \emph{Learned models} are trained on the labels. The two are not alternatives but stages of one pipeline: the optimisation models are predictors on their own, and their outputs are also the most important input features to the learned models (Section~\ref{sec:4}). Section~\ref{sec:5.overview} explains how they fit together. Sections~\ref{sec:5.rule}--\ref{sec:5.mlp} describe each predictor and why we tried it. Section~\ref{sec:5.design} covers choices that apply to all the learned models, and Section~\ref{sec:5.compare} compares all predictors on the same folds and explains why we chose the final two.
 
-% Final text:
+\subsection{How the predictors fit together}\label{sec:5.overview}
 
+The labels are the solution of an optimisation problem: SHOP chooses the on/off schedule that maximises the value of the watercourse over the week. The most direct way to predict them is therefore to solve a similar optimisation problem ourselves. We could not run SHOP, but we could build a simplified version of its problem from the topology file and the case inputs.
+
+This gives a ladder of predictors, each adding something the previous one lacks:
+\begin{enumerate}
+  \item \textbf{The economic rule} compares price and water value for each unit and hour separately. It knows nothing about reservoirs, start costs or other plants.
+  \item \textbf{The relaxed LP} solves the whole watercourse for the whole week at once, with reservoir limits, the flow of water between plants, start costs and minimum flows. It allows units to be ``partly on'', which makes it fast.
+  \item \textbf{The MILP} is the same problem with whole on/off decisions, which is closer to SHOP but slower.
+  \item \textbf{Learned models} take the outputs of the rule and the LP, together with the other features, and learn where the simplified optimisation differs from SHOP's real decisions.
+\end{enumerate}
+The learned model is needed because our LP is not SHOP: it leaves out non-linear physics, uses simplified costs and solves a relaxed problem. These simplifications cause systematic errors (for example, the LP commits too many units), and a learned model can correct systematic errors when it sees the LP's output next to the inputs that explain them.
+
+\subsection{Baseline: the economic rule}\label{sec:5.rule}
+
+The first baseline is what we call the economic rule: the price in hour $t$ minus the water value of the unit's upstream reservoir at the end of the week (+7 days). All unit-hours are ranked by this one number, so no training is needed. We chose this baseline because it is the core of how SHOP decides: a unit should run when the price is higher than the value of keeping the water for later. It is the simplest economic reasoning possible and uses only inputs SHOP itself had. It shows how much of the problem is explained by price and water value alone.
+
+\subsection{The relaxed LP of the whole watercourse}\label{sec:5.lp}
+
+\paragraph{What it is.} For each case we solve one linear programme (LP) that schedules all nine plants and 17 reservoirs hour by hour over the 168 hours (Songavatn and Bitdalsvatn are merged into one, because they share the same level and water value). It is our simplified version of the problem SHOP solves. The variables are the water flows through every plant, river and tunnel ($q_{e,t}$), the volume of every reservoir ($V_{r,t}$), the number of units on in each plant ($u_{p,t}$) and the starts and stops ($s_{p,t}$, $d_{p,t}$). The LP maximises
+\begin{equation}
+  \sum_{t=1}^{168} \sum_{p} \lambda_t P_{p,t}
+  \;+\; \sum_{r} \omega_r V_{r,168}
+  \;-\; \sum_{t,e} c_e\, q_{e,t}
+  \;-\; \sum_{t,p} \bigl(c^{\text{start}}_p s_{p,t} + c^{\text{stop}}_p d_{p,t}\bigr),
+\end{equation}
+that is, the income from selling power at the hourly price $\lambda_t$, plus the value of the water left in the reservoirs after the week, minus the costs of spilling or bypassing water and of starting and stopping units. The constraints are:
+\begin{itemize}
+  \item \emph{Water balance} for every reservoir and hour: the volume equals the previous volume plus the inflow, plus the water released into it from upstream, minus the water released from it.
+  \item \emph{Limits}: volumes between the minimum-volume constraint and the reservoir size, and flows below the capacity of each turbine, river and tunnel.
+  \item \emph{Production curves}: the power $P_{p,t}$ from each plant is a concave piecewise-linear function of its flow, built from the turbine and generator efficiency curves and head losses in the topology file.
+  \item \emph{Relaxed unit commitment}: $u_{p,t} P^{\min}_p \le P_{p,t} \le u_{p,t} P^{\max}_p$ with $0 \le u_{p,t} \le n_p$ (the number of units in the plant), and $s_{p,t} \ge u_{p,t} - u_{p,t-1}$, $d_{p,t} \ge u_{p,t-1} - u_{p,t}$.
+  \item \emph{Minimum flows} in six rivers, as soft constraints (a shortfall is allowed but costs a large penalty, so the LP is always solvable).
+\end{itemize}
+The value $\omega_r$ of water left in reservoir $r$ is computed from the +7-day water values: the water is followed down the main river, and each plant it would pass through is credited at its own upstream water value.
+
+\paragraph{What ``relaxed'' means.} In SHOP's problem $u_{p,t}$ must be a whole number: a unit is either on or off. Whole-number variables make the problem a mixed-integer programme, which is much slower to solve. In our LP, $u_{p,t}$ may take any value between 0 and $n_p$, for example 1.4 units on. This is called the \emph{continuous relaxation}. It turns the problem into an LP, which we solve with the HiGHS solver through SciPy \citep{huangfu2018highs,virtanen2020scipy} in a fraction of a second per case; all 3647 cases take a few minutes.
+
+\paragraph{What it gives the learned models.} From the solution we take, for each plant and hour, the production, the number of units on and the reservoir fill. From the \emph{dual values} of the water-balance constraints we get the shadow price of water: how much the objective would increase with one more unit of water in a reservoir in that hour. This is an hourly water value that, unlike the daily input water value, accounts for reservoirs filling up or running empty during the week. The margin is the price minus the shadow price of the water the plant uses, plus the shadow price of the water it releases downstream. Plant results are turned into unit results using the plants' fixed priority order: the $r$-th unit is counted as on to the degree that more than $r-1$ units are on. These five outputs (Table~\ref{tab:4.groups}) are used both as a predictor on their own, by ranking unit-hours by ``unit on'' or by the margin, and as features.
+
+\paragraph{Why we chose it.} SINTEF's own work suggests this approach: their paper used SHOP's relaxed solution as an input to the neural networks, and that solution alone already reached F1 0.974, while the networks added only about 0.004 \citep{barjaktarevic2026}. We did not have SHOP's relaxed solution in this competition, so we built our own. An LP was the natural choice because the problem is linear except for the on/off decisions, it is fast enough to solve for every case, and its duals give the hourly water values for free.
+
+\subsection{The MILP: the same problem with whole on/off decisions}\label{sec:5.milp}
+
+The MILP (mixed-integer linear programme) is the LP above with $u_{p,t}$ restricted to whole numbers, which is closer to what SHOP does. We solved it with SciPy's \texttt{milp} (also HiGHS), with a time limit of 10 seconds per case and an accepted optimality gap of 0.1\%. The production, units on and fill then come from the MILP, while the margin and water value still come from the LP, because a MILP has no dual values.
+
+\emph{Why we tried it:} the LP's fractional ``units on'' is its least SHOP-like output: 1.4 units on is not a decision SHOP could make. If the MILP's whole-number decisions were closer to SHOP's, they should make better features.
+
+\subsection{Gradient-boosted decision trees: LightGBM (final model 1)}\label{sec:5.lgbm}
+
+\paragraph{How it works.} A decision tree predicts by asking a sequence of yes/no questions about the features (for example ``is the LP's units on above 0.5?'') and giving each leaf a value. Gradient boosting builds many small trees one after another. Each new tree is fitted to the errors the trees so far still make, more precisely to the gradient of the log-loss, and its prediction is added with a small weight (the learning rate). After 800 trees the sum is a flexible model that has gradually corrected its own mistakes. LightGBM \citep{ke2017lightgbm} is a fast implementation that groups feature values into bins and grows each tree leaf by leaf, always splitting the leaf that reduces the loss the most.
+
+\paragraph{How we use it.} One \emph{pooled} model is trained on all 14 units together, with the unit ID as a categorical feature. Each row is one unit in one hour of one case, about 6.9 million rows in total, of which we sample 35\% for training to save memory and time. The settings are described in Section~\ref{sec:6}.
+
+\paragraph{Why we chose it.}
+\begin{itemize}
+  \item The data is \emph{tabular}: each row is a set of numbers with different meanings and scales. On such data, tree ensembles are usually stronger than neural networks, especially with moderate amounts of data \citep{grinsztajn2022}. We have about 2900 independent weeks.
+  \item Trees find \emph{interactions} without us specifying them, for example ``the partner plant runs \emph{and} the margin is positive''. Many of our key effects are interactions like this.
+  \item Trees are not affected by the scale of a feature and tolerate redundant features, which suits our many variants of the margin.
+  \item LightGBM handles \emph{missing values} directly. The coupling features exist only for Tokke and Vinje and are empty for the other units.
+  \item It trains in a few minutes per fold on a laptop, so we could run many experiments.
+\end{itemize}
+
+\subsection{XGBoost (final model 2)}\label{sec:5.xgb}
+
+XGBoost \citep{chen2016xgboost} is another implementation of gradient-boosted trees. It uses the same idea as LightGBM but differs in details, such as how trees are grown and regularised and how the unit ID is handled (as a number rather than a category). To compare the algorithms rather than the settings, we matched its settings to LightGBM's: leaf-wise growth with at most 127 leaves, 800 trees at learning rate 0.05, 80\% of rows and features per tree, and a minimum leaf size equivalent to LightGBM's 200 rows. It uses the same features and the same 35\% sample.
+
+\emph{Why we tried it:} XGBoost is the other widely used boosting library. A second implementation tests whether our result depends on LightGBM's particular choices, and if both give similar but not identical predictions, the second one can serve as a second submission.
+
+\subsection{Random forest}\label{sec:5.rf}
+
+A random forest also combines many decision trees, but in a different way: \emph{bagging} instead of boosting. Each tree is grown independently on a random sample of the rows, and at each split it only considers a random subset of the features. The prediction is the average over all trees. Boosting reduces errors by letting each tree correct the previous ones; bagging reduces errors by averaging many independent trees, whose individual mistakes partly cancel out. We used scikit-learn's implementation with 200 trees, each trained on 15\% of the sampled rows, at least 200 rows per leaf (as for LightGBM) and $\sqrt{39} \approx 6$ features considered at each split.
+
+\emph{Why we tried it:} it is the most common alternative to boosting among tree methods. It needs almost no tuning and is hard to overfit, so it shows whether the boosting itself matters or whether any tree ensemble does equally well on our features.
+
+\subsection{Logistic regression}\label{sec:5.logreg}
+
+Logistic regression is a linear model: it computes a weighted sum of the features and turns it into a probability with the logistic function. It cannot learn interactions or thresholds unless they are already in the features. Because it is sensitive to scale and cannot handle missing values, we standardised all features, replaced missing values with 0 plus an indicator of whether the value was missing, and encoded the unit ID as 14 separate yes/no columns (one-hot encoding).
+
+\emph{Why we tried it:} it is the simplest learned model. Comparing it with the tree models shows how much comes from the features themselves and how much from the model's ability to combine them non-linearly.
+
+\subsection{Neural network (multilayer perceptron)}\label{sec:5.mlp}
+
+A multilayer perceptron (MLP) is a neural network made of layers of units. Each unit computes a weighted sum of its inputs and passes it through a non-linear function (ReLU). With enough units it can represent interactions and thresholds, like trees, but it learns them by gradient descent on the whole network. We used scikit-learn's MLP with two hidden layers of 128 and 64 units, trained with the Adam optimiser in batches of 4096 rows, and stopped training when the score on a held-out 10\% of the training rows stopped improving. The inputs were prepared as for logistic regression.
+
+\emph{Why we tried it:} SINTEF's paper evaluated eight neural network architectures on this problem and found only small differences between them; a plain MLP was close to the best convolutional networks \citep{barjaktarevic2026}. The MLP is therefore a fair representative of neural networks, and it uses exactly the same features as our other models. A 1D convolutional network over the 168 hours, the best architecture in SINTEF's paper, would be the natural next step, but it needs a different input format (whole weeks as sequences instead of single unit-hours), and we prioritised improving the LP.
+
+\subsection{Choices that apply to all learned models}\label{sec:5.design}
+
+\paragraph{One pooled model or one model per unit.} We can train one model for all 14 units, with the unit ID as a feature, or a separate model for each unit. Separate models can specialise, but each sees only one fourteenth of the data. A pooled model can learn the shared economics (a positive margin means run, for every unit) from all the data, and still treat units differently through the unit ID. We tested both (exps 010 and 028f).
+
+\paragraph{Blending.} Averaging the predictions of two models often helps when they make different errors. We tested averages of LightGBM and XGBoost with weights from 0.3 to 0.7 (exp 020, and on the final features).
+
+\paragraph{Post-processing.} We also tried three ways of adjusting the predictions after training: smoothing each unit's predictions over neighbouring hours, since units run in blocks (exp 018); forcing the plants' priority order, so that a lower-priority unit is never more likely to run than a higher-priority unit in the same plant (exp 022); and averaging predictions for the same hour across overlapping cases.
+
+\subsection{Comparison and choice of the final models}\label{sec:5.compare}
+
+Table~\ref{tab:5.1} compares all predictors on the same folds and features.
 
 \begin{table}[H]
   \centering\small
@@ -14,86 +108,12 @@ We will compare all predictor types we tried \emph{on the same folds}, from no l
   \adjustbox{max width=\linewidth}{\input{tables/tab_5_1}}
 \end{table}
 
-\begin{disposition}
-\emph{Note:} exp 028f (one model per unit) uses the LP features of exp 024, the previous LP version; compare it with exp 024 (0.9865), not with exp 029.
-\end{disposition}
+\paragraph{The optimisation models.} The economic rule reaches 0.870. The relaxed LP alone reaches 0.941 when ranking by units on and 0.957 when ranking by its margin. The margin ranks better because it says \emph{how} profitable an hour is, while units on is often exactly 0 or 1 and so cannot rank hours within those groups. The jump from the rule to the LP (+0.087) is the value of modelling the whole watercourse: reservoir limits, the coupling between plants and start costs. The MILP made the features \emph{worse}: on the LP sanity check (every sixth training case), the AUC of units on fell from 0.945 to 0.911. The reason is that AUC rewards knowing how close a decision is. The LP's 0.4 units on says ``almost worth starting'', while the MILP must round it to 0 or 1, so that information is lost. Its whole-number decisions were not closer to SHOP's either. One possible reason is that some of SHOP's labels are themselves taken from a relaxed solution \citep{barjaktarevic2026}, and our MILP also differs from SHOP's in many other ways, so rounding to whole units does not by itself make it more SHOP-like. We therefore kept the LP.
 
-% Final text:
+\paragraph{The learned models.} All learned models beat the LP alone, which confirms that learning corrects systematic errors in the LP. Even logistic regression reaches 0.9818, higher than LightGBM \emph{without} the LP features (0.9789): with good physics features, a simple model already does well. The neural network reaches 0.9866, the random forest 0.9876, and the two boosting models 0.9912 and 0.9910. We see two likely reasons for the gap between bagging and boosting, although we did not test them separately. First, the random forest's trees each see only a few features per split and a small sample, so they rarely find the precise thresholds on the LP features that matter most; boosting can spend later trees refining exactly those regions. Second, averaging independent trees mainly reduces variance, while our main problem is bias: the LP's systematic errors, which boosting corrects step by step.
 
+The neural network lands between logistic regression and the random forest, and its gap to LightGBM is largest in 2020 ($-0.0094$, against $-0.002$ to $-0.004$ in the other years). 2020 had extremely low prices and water values close to zero, so many features took values outside the range seen in the training years. A tree only compares a feature with thresholds, so an unusually low value simply ends up in the lowest leaf, while a neural network computes a weighted sum of the actual values and can give unreliable outputs far from its training data. We think this is the main reason, although we did not test it directly. We also did not tune the MLP (layer sizes, learning rate, regularisation) as carefully as LightGBM, so its score is a lower estimate of what a neural network could reach. The result agrees with SINTEF's paper, where neural networks added only about 0.004 F1 on top of the relaxed solution \citep{barjaktarevic2026}, and with the general finding that tree ensembles are hard to beat on tabular data \citep{grinsztajn2022}: with the LP features, most of the information is already in the inputs, and the remaining corrections are thresholds and interactions that boosted trees find well.
 
-\subsection{Rules without learning (baselines)}\label{sec:5.1}
+\paragraph{Pooled versus per unit, blends and post-processing.} Separate models per unit were worse ($-0.0016$ in exp 010 and $-0.0014$ in exp 028f; note that 028f uses the previous LP version and should be compared with its parent at 0.9865). The economics are shared by all units, so the pooled model learns them from 14 times more data, and micro-AUC ranks all units in one list, so predictions on a common scale help directly. Blending LightGBM and XGBoost gained 0.0000--0.0001: blending only helps when models make different errors, and these two make almost the same ones (their test predictions correlate 0.997) because they are the same kind of model on the same features. None of the post-processing helped. Smoothing was worse at every window size, because SHOP's decisions switch sharply and the LP already gets the timing right. The priority order had no effect because the model already respected it. Averaging over overlapping cases was worse, because SHOP solves each case independently and neighbouring cases disagree on 12\% of their shared hours.
 
-\begin{disposition}
-\begin{enumerate}
-\def\labelenumi{(\alph{enumi})}
-\tightlist
-\item
-  The single economic rule ``price − upstream water value at +7 d'' ranks all unit-hours by one number. (b) The relaxed LP alone, ranking by its fractional ``unit on'' or by its marginal profit. Including these shows how much comes from the physics and how much from the machine learning: the LP alone is already strong, and the GBDT on top closes most of the remaining gap.
-\end{enumerate}
-\end{disposition}
-
-% Final text:
-
-
-\subsection{Gradient-boosted trees: LightGBM (final model 1)}\label{sec:5.2}
-
-\begin{disposition}
-Why this model type: the data is tabular (one row per case × unit × hour, about 6.9 million rows); trees capture interactions such as ``the partner plant runs \emph{and} the margin is positive'' without us specifying them; they are robust to features on different scales and to redundant features; they handle missing values (the partner features are empty for most units); and they train in under a minute. With about 2900 cases, tree ensembles are the usual strong choice for tabular data (Grinsztajn et al., 2022). We use one \emph{pooled} model for all 14 units with the unit ID as a categorical feature.
-\end{disposition}
-
-% Final text:
-
-
-\subsection{XGBoost (final model 2)}\label{sec:5.3}
-
-\begin{disposition}
-Same features, settings matched to LightGBM (leaf-wise growth, same number of leaves and trees). It scores the same as LightGBM (0.9910 vs 0.9912), and its test predictions correlate 0.997 with LightGBM's. Explanation: both are gradient-boosted trees, and with these features the information, not the learning algorithm, sets the limit. We still chose it as the second submission because it is a different implementation, which gives some insurance on the private leaderboard, and its public score was slightly higher.
-\end{disposition}
-
-% Final text:
-
-
-\subsection{One model per unit versus one pooled model (exps 010, 028f)}\label{sec:5.4}
-
-\begin{disposition}
-Separate models for each unit were worse (−0.0016 and −0.0014). Explanations: (1) the economics are shared by all units, so a pooled model learns them from 14× more data; (2) separate models produce probabilities on separate scales, while micro-AUC ranks all units in one list, so a common scale helps directly.
-\end{disposition}
-
-% Final text:
-
-
-\subsection{Blends (exp 020 and LightGBM + XGBoost on the final features)}\label{sec:5.5}
-
-\begin{disposition}
-Averaging LightGBM and XGBoost gave +0.0000 to +0.0001. Explanation: blending only helps when models make \emph{different} errors, and these two make nearly the same errors because they see the same features.
-\end{disposition}
-
-% Final text:
-
-
-\subsection{Integer optimisation (MILP) instead of the LP}\label{sec:5.6}
-
-\begin{disposition}
-Solving the LP with true on/off decisions is closer to SHOP but gave \emph{worse} features (units-on AUC 0.911 vs 0.945). Explanation: AUC rewards knowing \emph{how close} a decision is; the fractional LP value carries that information, a hard 0/1 decision throws it away.
-\end{disposition}
-
-% Final text:
-
-
-\subsection{Post-processing we tried}\label{sec:5.7}
-
-\begin{disposition}
-Smoothing predictions over neighbouring hours (worse at every window size, because the labels switch sharply and the LP timing is precise); enforcing the plant priority order (no effect, the model already respects it); averaging predictions over overlapping cases (worse, because neighbouring cases are solved independently and disagree on 12\% of hours).
-\end{disposition}
-
-% Final text:
-
-
-\subsection{Neural networks (not trained)}\label{sec:5.8}
-
-\begin{disposition}
-We will be honest that we did not train a neural network, and explain why: with about 2900 weeks of data, tree models on tabular features are the safer choice; SINTEF's paper shows that neural networks on this dataset mainly add a small correction on top of the relaxed LP's solution; and our time went into the LP, which was where the gains were. A 1D CNN over the LP's hourly outputs would be the natural next model to try.
-\end{disposition}
-
-% Final text:
-
+\paragraph{Our choice.} We chose LightGBM (exp 029) and XGBoost (exp 030) as our two final submissions. They have the highest validation scores, and the difference between them (0.0002) is well within seed noise. We kept both rather than one model and a blend, because the blend gives no gain, while two different implementations give some protection on the private leaderboard if one of them happens to do worse on 2023--2024.

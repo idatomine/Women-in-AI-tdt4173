@@ -1,17 +1,19 @@
 \section{Results}\label{sec:8}
 
-\begin{disposition}
-A short section with the final numbers in one table (Table~\ref{tab:8.1}): per-fold validation AUC, the mean, the locked 2018 holdout, and the public leaderboard score for both final models, plus the highest virtual team for reference.
-\end{disposition}
-
-% Final text:
-
+Table~\ref{tab:8.1} collects all our main results in one place: the predictors without learning, how the score developed as we added features and improved the LP, the other predictor types on the final features, and the two final models. The mean is over the four validation folds (2019--2022). The locked 2018 holdout was scored only for the final models, and only the submitted models have a public leaderboard score. Table~\ref{tab:8.2} gives the per-fold scores of the final models.
 
 \begin{table}[H]
   \centering\small
-  \caption{Final results}
+  \caption{All results: mean validation AUC over folds A--D, the locked 2018 holdout and the public leaderboard}
   \label{tab:8.1}
   \adjustbox{max width=\linewidth}{\input{tables/tab_8_1}}
+\end{table}
+
+\begin{table}[H]
+  \centering\small
+  \caption{The final models per validation fold}
+  \label{tab:8.2}
+  \adjustbox{max width=\linewidth}{\input{tables/tab_8_2}}
 \end{table}
 
 \begin{disposition}
@@ -22,9 +24,13 @@ What to say:
 \item
   Both models clear the highest virtual team (0.99040) on the public leaderboard by about 0.004.
 \item
+  Compared with the predictors without learning (Section~\ref{sec:5.compare}), the final models raise the AUC from 0.870 (economic rule) and 0.957 (LP alone) to 0.991, so both the physics and the learning contribute.
+\item
+  Of the development steps, the two largest gains came from adding information about how the plants depend on each other: the Tokke--Vinje coupling (+0.013) and the LP with its routing fix (+0.004 and +0.005). The public leaderboard rose with the validation score at every submitted step (0.99042 → 0.99414), so our validation reflected the test period.
+\item
   The 2018 holdout (0.9877 / 0.9876) lies within the range of the validation folds (0.9868--0.9941), so we see no sign that our choices overfitted the four folds.
 \item
-  The public leaderboard score is higher than our validation mean. Possible explanation: 2023--2024 has more normal prices than our hardest validation years (2020, 2022).
+  The public leaderboard score is higher than our validation mean. Possible explanation: 2023--2024 may be easier than our hardest validation year, 2020, with its extremely low prices.
 \item
   Caveat: the final grade uses the private leaderboard, which we cannot see; differences of ±0.001 between our two models are noise.
 \item
@@ -33,4 +39,3 @@ What to say:
 \end{disposition}
 
 % Final text:
-

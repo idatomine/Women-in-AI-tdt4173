@@ -69,6 +69,12 @@
 \tableofcontents
 \newpage
 
+% Paragraphs: no indent, a blank line between them (set after the contents,
+% and switched off inside long tables, so neither gets the extra space)
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{1em}
+\AtBeginEnvironment{longtable}{\setlength{\parskip}{0pt}}
+
 \input{sections/01_introduction}
 \input{sections/02_exploratory_data_analysis}
 \input{sections/03_validation_strategy}
@@ -87,5 +93,6 @@
 
 \appendix
 \input{sections/A_feature_names}
+\input{sections/B_experiment_log}
 
 \end{document}

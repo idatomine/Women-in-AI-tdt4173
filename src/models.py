@@ -1,6 +1,7 @@
 """Model training on the long format (one row per case × unit × hour).
 
-Model types (`model: type:` in a config): `lightgbm`, `xgboost`, or `blend` (a weighted
+Model types (`model: type:` in a config): `lightgbm`, `xgboost`, `random_forest`,
+`logistic`, `mlp` (the last three to compare predictor types; report §5), or `blend` (a weighted
 average of the raw probabilities of several member models, each with its own model
 config under `members:`; global weights, never per unit, BRIEFING §4.2). Add new types to
 `_train`, `_predict_one` and `_gain`; the rest of the harness doesn't need to change.
@@ -12,6 +13,13 @@ import lightgbm as lgb
 import numpy as np
 import pandas as pd
 import xgboost as xgb
+from sklearn.compose import ColumnTransformer
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.impute import SimpleImputer
+from sklearn.linear_model import LogisticRegression
+from sklearn.neural_network import MLPClassifier
+from sklearn.pipeline import Pipeline, make_pipeline
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
 
 from src.data import KERNEL_DIR
 
@@ -52,6 +60,30 @@ def _train(model_cfg: dict, X: np.ndarray, y: np.ndarray, names: list[str], cate
         model = xgb.XGBClassifier(tree_method="hist", importance_type="gain", **params)
         model.fit(X, y, sample_weight=weight)
         return model
+    if model_cfg["type"] == "random_forest":
+        # Bagged trees (no boosting); sklearn handles the coupling features' NaN natively.
+        # The unit ID is numeric, as for XGBoost.
+        params = {"random_state": seed, "n_jobs": N_JOBS, **model_cfg["params"]}
+        model = RandomForestClassifier(**params)
+        model.fit(X, y, sample_weight=weight)
+        return model
+    if model_cfg["type"] in ("logistic", "mlp"):
+        # Linear model and neural network need scaled inputs without NaN: the unit ID is
+        # one-hot encoded, missing values (partner features of non-Tokke/Vinje units) become
+        # 0 plus a missing indicator, and every column is standardised.
+        unit = [names.index(c) for c in categorical]
+        rest = [j for j in range(X.shape[1]) if j not in unit]
+        prep = ColumnTransformer([
+            ("unit", OneHotEncoder(handle_unknown="ignore"), unit),
+            ("num", make_pipeline(SimpleImputer(strategy="constant", fill_value=0, add_indicator=True),
+                                  StandardScaler()), rest)])
+        if model_cfg["type"] == "logistic":
+            estimator = LogisticRegression(**model_cfg["params"])
+        else:
+            estimator = MLPClassifier(random_state=seed, **model_cfg["params"])
+        model = Pipeline([("prep", prep), ("model", estimator)])
+        model.fit(X, y)
+        return model
     raise ValueError(f"unknown model type: {model_cfg['type']}")
 
 
@@ -64,6 +96,8 @@ def _predict_one(model, X: np.ndarray) -> np.ndarray:
 def _gain(model) -> np.ndarray:
     if isinstance(model, lgb.LGBMClassifier):
         gain = model.booster_.feature_importance("gain")
+    elif isinstance(model, Pipeline):  # logistic / MLP: no split gain
+        return np.full(model.n_features_in_, np.nan)
     else:
         gain = model.feature_importances_
     return gain / max(gain.sum(), 1e-12)

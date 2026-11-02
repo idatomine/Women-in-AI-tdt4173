@@ -1,9 +1,26 @@
-\begin{tabular}{llllllll}
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.2\linewidth}>{\raggedright\arraybackslash}p{0.42\linewidth}lll}
 \toprule
-\textbf{} & \textbf{A (2020)} & \textbf{B (2021)} & \textbf{C (2022)} & \textbf{D (2019)} & \textbf{mean A–D} & \textbf{holdout 2018} & \textbf{public LB} \\
+\textbf{} & \textbf{Predictor} & \textbf{mean A–D} & \textbf{holdout 2018} & \textbf{public LB} \\
 \midrule
-LightGBM (exp 029, Short\_notebook\_1) & 0.9867 & 0.9941 & 0.9921 & 0.9920 & 0.9912 & 0.9877 & 0.99414 \\
-XGBoost (exp 030, Short\_notebook\_2) & 0.9860 & 0.9940 & 0.9922 & 0.9916 & 0.9910 & 0.9876 & 0.99429 \\
-Highest virtual team (VT1) & — & — & — & — & — & — & 0.99040 \\
+Without learning & Economic rule: price − upstream water value & 0.8698 & — & — \\
+ & Relaxed LP alone: units on & 0.9411 & — & — \\
+ & Relaxed LP alone: margin & 0.9571 & — & — \\
+Development (LightGBM) & 001: economic features & 0.9593 & — & — \\
+ & 002: − raw EUR levels & 0.9642 & — & — \\
+ & 007: + reservoir pressure & 0.9652 & — & — \\
+ & 008: + dynamic programme & 0.9663 & — & — \\
+ & 009: + Tokke–Vinje coupling & 0.9789 & — & — \\
+ & 013: + relaxed LP & 0.9829 & — & — \\
+ & 014c: − reservoir pressure & 0.9827 & — & — \\
+ & 017: LP + minimum flows & 0.9840 & — & 0.99042 \\
+ & 021: LP + start costs & 0.9850 & — & 0.99067 \\
+ & 024: LP + production curves, spill costs & 0.9865 & — & 0.99099 \\
+Other predictors, final features & Logistic regression (034) & 0.9818 & — & — \\
+ & Neural network, MLP (035) & 0.9866 & — & — \\
+ & Random forest (033) & 0.9876 & — & — \\
+ & Blend of 029 and 030 (50/50) & 0.9913 & — & — \\
+Final models & LightGBM, 029: LP routing fix (final 1) & 0.9912 & 0.9877 & 0.99414 \\
+ & XGBoost, 030 (final 2) & 0.9910 & 0.9876 & 0.99429 \\
+Reference & Highest virtual team (VT1) & — & — & 0.99040 \\
 \bottomrule
 \end{tabular}

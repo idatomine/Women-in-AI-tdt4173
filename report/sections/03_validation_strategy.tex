@@ -30,6 +30,8 @@ This short section explains \emph{how we decided whether a change was an improve
 \item
   \textbf{A locked holdout year (2018).} We never looked at 2018 while choosing features or settings, and scored it exactly once for the two final models, as an honest check that we had not overfitted the four folds.
 \item
+  \textbf{How we ran experiments.} Every experiment is a configuration file that changes \emph{one} thing compared with an earlier experiment (a feature group, a model setting or the model type), so each change in score has a single cause. Experiments are numbered in the order they were run; a letter marks variants tested together (seed checks, ablations, the same feature with and without the LP). Each experiment is scored on all four folds and logged automatically with its change, scores and our decision. The other sections refer to experiments by number; the full log is in Appendix~\ref{sec:B} (Table~\ref{tab:B.1}).
+\item
   \textbf{The acceptance rule.} We measured that changing only the random seed moves a fold by up to 0.0017 and the mean by up to 0.0008. A change was therefore accepted only if the mean improved by at least 0.001, at least 3 of 4 folds did not get worse, and no fold dropped by more than 0.002. Among equal scores we chose the simpler model. For borderline cases we ran a second seed. We will explain why this matters: with dozens of experiments, some changes would look better by pure luck, and a fixed rule protects against fooling ourselves.
 \item
   \textbf{The public leaderboard} was used only as a sanity check after large steps (about one upload per step), never to choose between small variants, because it is a small sample of 2023--2024 and the final grade uses the private part.

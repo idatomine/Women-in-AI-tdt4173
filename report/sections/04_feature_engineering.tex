@@ -20,7 +20,7 @@ This is the core of the report. We will tell it as a story in stages, because ea
 \begin{itemize}
 \tightlist
 \item
-  \emph{Only use what SHOP knew.} Every feature is computed from the case's own inputs: prices, inflows and constraints inside the week, the volume at the start, and the water values at the start and at +7 days. Reservoir volumes after the start day are observed outcomes and would leak information, so they are never used. Neither is the optimiser's calculation time.
+  \emph{Only use what SHOP knew.} Every feature is computed from the case's own inputs: prices, inflows and constraints inside the week, the volume at the start, and the water values at the start and at +7 days. Reservoir volumes after the start day are observed outcomes and would leak information, so they are never used. Neither is the optimiser's calculation time. One borderline case: two scarcity features use the mean price of the week \emph{after} the case. This is not label leakage, because the +7-day water value that SHOP received already reflects that price, but it is information from outside the case week.
 \item
   \emph{Relative, not absolute, prices.} Because the price level changes by a factor of 20 between years (Figure~\ref{fig:2.5}), features are expressed relative to the week's price level (ranks, z-scores, differences divided by the level). A tree that learns ``on if price \textgreater{} 100 EUR'' in 2022 would fail in 2020 and in the test years.
 \item
@@ -30,6 +30,65 @@ This is the core of the report. We will tell it as a story in stages, because ea
 
 % Final text:
 
+
+\subsection{Overview: the features we kept and the features we tried}\label{sec:4.overview}
+
+% Final text:
+Before going through the stages one by one, Tables~\ref{tab:4.groups} and~\ref{tab:4.tried} give an overview. The features are organised in \emph{feature groups}. A group is a set of features built from the same idea, for example ``how expensive is this hour compared with the rest of the week''. We added and removed whole groups rather than single features, for three reasons. First, the features in a group answer the same question in slightly different ways, so testing the group tests the idea itself. Second, the score varies by up to 0.0008 just from changing the random seed (Section~\ref{sec:3}); with 39 or more features, testing them one at a time would mean hundreds of comparisons, and some would look like improvements by pure luck. Third, a tree model is not harmed much by a few redundant features, because it simply does not split on a feature that adds nothing, so there was little to gain from removing single features.
+
+The final models use 11 groups with 39 features in total (Table~\ref{tab:4.groups}). The groups build on each other: the first eight describe the economics of each hour and the state of the reservoirs, the dynamic programme and the Tokke--Vinje coupling add the plants' schedules and how they depend on each other, and the relaxed LP adds the physics of the whole watercourse (it is described as a predictor in Section~\ref{sec:5.lp}). Six features in raw EUR were built but removed from the model (Section~\ref{sec:4.3}). The full list of features with readable names is in Table~\ref{tab:A.1}.
+
+\begin{table}[H]
+  \centering\small
+  \caption{The feature groups in the final models (exp 029 and 030)}
+  \label{tab:4.groups}
+  \begin{tabular}{>{\raggedright\arraybackslash}p{0.15\linewidth}r>{\raggedright\arraybackslash}p{0.32\linewidth}>{\raggedright\arraybackslash}p{0.35\linewidth}}
+    \toprule
+    \textbf{Group} & \textbf{Features} & \textbf{What it describes} & \textbf{Why we included it} \\
+    \midrule
+    Price shape & 4 & How expensive the hour is compared with the rest of the week (z-score, rank, price divided by the week's level, and the 24-hour average around the hour). & SHOP moves water to the most expensive hours of the week. Relative prices keep their meaning even though the price level changes by a factor of 20 between years. \\
+    Calendar & 4 & Hour within the case, hour of day, and the day of year and weekday the case starts. & Hour within the case captures effects near the end of the week; hour of day the daily price and demand pattern; day of year the season (snowmelt gives high inflow in spring). \\
+    Water value & 2 & The net water value relative to the week's price level, and how the water value changes over the week. & A rising water value means water is becoming more valuable, which is a reason to save it. \\
+    Reservoirs & 3 & Fill of the reservoir above and below the plant on the start day, and the week's inflow. & A nearly full reservoir must release water, an empty one cannot, and a full reservoir below limits how much the plant can release. \\
+    Unit & 3 & Unit ID, maximum output and start cost. & Lets one pooled model treat the 14 units differently. Large units and units with high start costs need a larger margin to be worth starting. \\
+    Price vs water value & 4 & The margin: price minus the water value, in four versions (upstream only, net of the downstream value, and as a ratio). & This is the core of SHOP's decision: run when the water earns more now than it is worth if saved. The versions are scaled differently, and the trees use the one that splits best. \\
+    Scarcity & 3 & The water value divided by the mean price at the start and end of the week, and next week's price level. & Expresses how scarce water is in a way that can be compared across years. Uses next week's mean price, which the +7-day water value already reflects. \\
+    Week economics & 2 & Share of the week's hours with a positive margin, and the total positive margin. & Describes the week as a whole: if most hours are profitable, the unit will run a lot. \\
+    Dynamic programme & 6 & For each plant, the most profitable on/off schedule with start costs: on or off, how many units, and the regret (how much is lost by doing the opposite). Solved with the YAML start cost and with 10 times that cost. & Adds start costs, which make units run in blocks instead of switching every hour. The regret acts as a confidence measure. Two cost levels because we did not know the scale SHOP uses. \\
+    Tokke--Vinje coupling & 3 & The partner plant's schedule, regret and margin. & Vinje releases into the tiny Vinjevatn, which Tokke must empty, so the two plants run together. \\
+    Relaxed LP & 5 & Production, units on, margin, hourly water value and reservoir fill from the LP of the whole watercourse. & Our simplified copy of SHOP's own optimisation, including reservoir limits and the flow between all reservoirs (Section~\ref{sec:5.lp}). \\
+    \midrule
+    \textbf{Total} & \textbf{39} & & \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Table~\ref{tab:4.tried} lists every group we tried, why we expected it to help, and why it was kept or dropped. The gain is the change in mean AUC over folds A--D compared with the model it was added to. A group was kept only if it passed the acceptance rule (Section~\ref{sec:3}): a gain of at least 0.001, at least three of four folds not worse, and no fold worse by more than 0.002.
+
+\begin{table}[H]
+  \centering\small
+  \caption{Every feature group we tried, why, and the decision}
+  \label{tab:4.tried}
+  \begin{tabular}{>{\raggedright\arraybackslash}p{0.14\linewidth}>{\raggedright\arraybackslash}p{0.08\linewidth}>{\raggedright\arraybackslash}p{0.29\linewidth}>{\raggedright\arraybackslash}p{0.09\linewidth}>{\raggedright\arraybackslash}p{0.26\linewidth}}
+    \toprule
+    \textbf{Group (features)} & \textbf{Exp} & \textbf{Why we tried it} & \textbf{Gain} & \textbf{Decision and why} \\
+    \midrule
+    Raw EUR levels (6) & 002 & Part of the first baseline: the price and water values in EUR. & +0.0049 when removed & \textbf{Removed.} The trees learned EUR thresholds that only hold in one price regime (Section~\ref{sec:4.3}). \\
+    Margin context (15) & 005 & Units run in blocks because of start costs, so the margin in the hours around $t$ might matter, not only at $t$. & +0.0007 & \textbf{Dropped.} Within seed noise. The trees can already combine the margin with the price shape, so this only re-expresses existing information. \\
+    Profitable blocks (5) & 006 & A long run of profitable hours justifies paying a start cost; a short one does not. & +0.0004 & \textbf{Dropped.} Same explanation as margin context. \\
+    Reservoir pressure (2) & 007 & A nearly full reservoir with high inflow must release water whatever the price. & +0.0010 & \textbf{Kept, later removed} (exp 014c, $-0.0002$ without it): the LP already knows the reservoir limits. \\
+    Dynamic programme (6) & 008 & Adds start costs and realistic on/off blocks per plant. & +0.0011 & \textbf{Kept.} Still needed with the LP ($-0.0011$ without it, exp 014a). \\
+    Tokke--Vinje coupling (3) & 009 & Vinje and Tokke are linked by a tiny reservoir and run together. & +0.0126 & \textbf{Kept.} The largest gain before the LP; $-0.0071$ without it (exp 014b). \\
+    Cascade (2) & 011 & The same idea as the coupling, for every plant fed by another plant. & +0.0008 & \textbf{Dropped.} Below the threshold. Hogga (fed by Tokke via Bandak) improved by 0.02--0.04 on all folds, but Lio and Kjela were mixed. The LP, added next, models all these connections anyway. \\
+    Relaxed LP (5) & 013 & A simplified copy of SHOP's optimisation over the whole watercourse. & +0.0040 & \textbf{Kept}, and improved in four steps (017, 021, 024, 029: +0.0085 together; Section~\ref{sec:4.9}). \\
+    Real storage lake (3) & 019 & Haukeli's own reservoir data is a constant placeholder, so we used the lake above it instead. & +0.0001 & \textbf{Dropped.} The LP already models the lake above. \\
+    Water budget (7) & 025 & How many full-power hours of water the plant must and can use this week. & +0.0010 without LP, +0.0001 with LP & \textbf{Dropped.} It helps only without the LP, which shows that the LP already computes the same information. \\
+    Forward margin (6) & 026 & What the rest of the week still offers, which decides whether to use water now or later. & +0.0001 without and with LP & \textbf{Dropped.} No gain even without the LP: the price rank and the DP schedule already describe the rest of the week. \\
+    Head (2) & 027 & The height drop sets how much power each m$^3$ of water gives. & 0.0000 without LP, $-0.0002$ with LP & \textbf{Dropped.} No gain even without the LP. Likely reason: the head follows the reservoir fill, which the model already has. \\
+    Extra LP outputs (3) & 031 & More detail from the LP for the weakest units (Vinje G2/G3, Kjela). & $\pm 0.0001$ & \textbf{Dropped.} The trees could already recover this from the other LP and DP features. \\
+    \bottomrule
+  \end{tabular}
+\end{table}
 
 \subsection{Stage 1: economic features (exp 001, mean AUC 0.9593)}\label{sec:4.2}
 
@@ -87,26 +146,14 @@ Each Tokke unit gets Vinje's DP schedule and margin, and the other way round. Ex
 
 \subsection{The relaxed LP of the whole watercourse (exp 013, +0.004; the most important feature)}\label{sec:4.8}
 
-\begin{disposition}
-We will explain carefully, because this is the key idea:
-
-\begin{itemize}
-\tightlist
-\item
-  \emph{What it is.} We wrote a simplified version of SHOP's optimisation problem as a linear program. For each hour it decides how much water each plant uses, how much is spilled, and how full each reservoir is. Water balance equations link the reservoirs along the topology file's connections. The objective is to maximise income from selling power at the known prices plus the value of the water left at the end of the week (at the +7 d water values).
-\item
-  \emph{What ``relaxed'' means.} In SHOP a unit is either on or off (an integer decision), which makes the problem slow to solve. We allow ``partly on'' values between 0 and 1, which turns it into an LP that solves in a fraction of a second. All 3647 cases take about 7 minutes on one CPU core.
-\item
-  \emph{What it gives us.} For every plant and hour, the LP's production and committed units, and the \emph{shadow price} of water in each reservoir: the effective hourly value of one more unit of water, which accounts for reservoirs filling up or running empty. These are better water values than the static daily ones.
-\item
-  \emph{Why it works so well.} The labels \emph{are} the solution of almost the same optimisation problem. The LP reproduces the economics and the physical constraints together (limits, coupling, start costs). The GBDT then only has to learn the systematic differences between the relaxed and the real integer solution (for example, the LP tends to commit too many units). SINTEF's paper supports this: their relaxed solution alone scored F1 ≈ 0.97, and neural networks added only ≈ 0.004 on top.
-\item
-  \emph{A failure that taught us something.} Valuing leftover water ``all the way to the sea'' at each reservoir's own water value made the LP much worse (AUC ≈ 0.70). Explanation: the synthetic water values are not consistent with each other across reservoirs, so long chains of differences amplify their noise. Valuing each plant's water at its own upstream water value (our ``path'' valuation) works.
-\end{itemize}
-\end{disposition}
-
 % Final text:
+The relaxed LP is described as a predictor in Section~\ref{sec:5.lp}. Here we look at it as a feature group. Adding its five outputs (production, units on, margin, hourly water value and fill) to exp 009 raised the mean AUC from 0.9789 to 0.9829, with all four folds improving, and the LP features became the most important in the model (Section~\ref{sec:7}).
 
+\emph{Why it works so well.} The labels \emph{are} the solution of almost the same optimisation problem. The features before the LP each describe one part of the decision: the margin describes the economics of one hour, the fill describes one reservoir, the DP describes one plant without reservoir limits. The LP combines all of these in one consistent solution for the whole watercourse and the whole week. The learned model then no longer has to reconstruct SHOP's decision from the parts; it only has to learn where the simplified LP differs from SHOP, for example that the LP tends to commit too many units.
+
+\emph{Why the earlier groups were still needed.} The ablations showed that the DP ($-0.0011$ without it) and the Tokke--Vinje coupling ($-0.0071$) still helped next to the LP, while reservoir pressure did not (Table~\ref{tab:4.tried}). The first LP version had no start costs and no unit commitment, so the DP's on/off blocks and the coupling's partner schedules added information it did not have. Reservoir pressure did not, because the LP already knows the reservoir limits.
+
+\emph{A failure that taught us something.} Water left at the end of the week will later run through every plant below it on its way to the sea, so its value depends on how much power it can still produce. We tried two ways of pricing that power. In the ``sea'' valuation, all the power the water could produce down to the sea was priced at the water value of the reservoir it is left in. This made the LP much worse: on the LP sanity check, the AUC of units on fell from 0.889 to 0.726 and of the margin from 0.929 to 0.789. In the ``path'' valuation, which we use, the power from each plant on the way is priced at the water value of the reservoir that feeds that plant. Our explanation is that the synthetic water values of neighbouring reservoirs are not consistent with each other, so pricing a whole chain of plants with one reservoir's water value gives the wrong incentives, while the path valuation lets every plant compare the price with its own upstream water value, which is what the labels follow (Section~\ref{sec:2}).
 
 \subsection{Making the LP more like SHOP (exps 017, 021, 024, 029; 0.9840 → 0.9912)}\label{sec:4.9}
 
@@ -134,7 +181,7 @@ We improved the LP step by step and measured each step separately:
 \subsection{What did not help once the LP was in (exps 019, 025–027, 031)}\label{sec:4.10}
 
 \begin{disposition}
-A water budget, forward-looking margins, head proxies, the real storage lake behind Haukeli, an unclipped LP units-on gap and the joint fill of lakes joined by tunnels all gave ± 0.0002. Common explanation: the LP already computes this information. Interesting detail: the water budget \emph{did} help the model without the LP (+0.001), which confirms the explanation.
+A water budget, forward-looking margins, head proxies, the real storage lake behind Haukeli, an unclipped LP units-on gap and the joint fill of lakes joined by tunnels all gave at most ± 0.0002 on top of the LP (Table~\ref{tab:4.tried}). For the water budget, the storage lake and the extra LP outputs, the explanation is that the LP already computes this information; the water budget \emph{did} help the model without the LP (+0.001), which supports that explanation. Forward margins and head proxies did not help even without the LP, so for them the information was already in the earlier features (price rank and DP schedule, and reservoir fill).
 \end{disposition}
 
 % Final text:
@@ -143,13 +190,7 @@ A water budget, forward-looking margins, head proxies, the real storage lake beh
 \subsection{Summary of feature selection}\label{sec:4.11}
 
 \begin{disposition}
-The table of experiments (Table~\ref{tab:4.1}) shows every change, its effect and the decision. The ablation (014a--c) showed that the DP (−0.0011 without it) and the coupling (−0.0071) are still needed next to the LP. Some redundant features remain (e.g.~two versions of the net margin) because tree models tolerate them and removing them did not change the score. Figure~\ref{fig:7.1} shows how much each feature family contributes to the final model.
+The full experiment log (Table~\ref{tab:B.1} in Appendix~\ref{sec:B}) shows every change, its effect and the decision. The ablation (014a--c) showed that the DP (−0.0011 without it) and the coupling (−0.0071) are still needed next to the LP. Some redundant features remain (e.g.~two versions of the net margin) because tree models tolerate them and removing them did not change the score. Figure~\ref{fig:7.1} shows how much each feature family contributes to the final model.
 \end{disposition}
 
 % Final text:
-
-
-{\small
-  \def\tablecaption{Every experiment, its change and the decision (from experiments/journal.md)}
-  \input{tables/tab_4_1}
-}

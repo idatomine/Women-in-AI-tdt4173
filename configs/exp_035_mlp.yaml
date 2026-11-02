@@ -1,0 +1,39 @@
+# Experiment 035_mlp: predictor-type comparison for the report (§5): same 39 features as
+# exp 029, another model family. Not a submission candidate.
+
+name: exp_035_mlp
+change: "exp 029 with MLP neural network (2 hidden layers, 128 and 64 units) instead of LightGBM (same features)"
+compare_to: exp_029_main_river
+
+features:            # same groups as exp 001
+  - price_shape
+  - calendar
+  - water_value
+  - hydro
+  - unit_static
+  - wv_margin
+  - scarcity
+  - case_economics
+  - relaxed_dp
+  - tokke_vinje
+  - relaxed_lp_shop2
+
+drop_features:       # single features removed from the groups above
+  - price
+  - price_wkmean
+  - wv_up_end
+  - wv_up_start
+  - wv_dn_end
+  - net_wv
+
+model:
+  type: mlp
+  row_share: 0.35
+  seed: 0
+  params:
+    hidden_layer_sizes: [128, 64]
+    batch_size: 4096
+    learning_rate_init: 0.001
+    max_iter: 30
+    early_stopping: true
+    n_iter_no_change: 4

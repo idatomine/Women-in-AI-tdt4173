@@ -115,6 +115,8 @@ Added during the experiments (see the journal for which ones were kept):
 Config options besides `features:`:
 - `drop_features:` removes single features by name from the selected groups.
 - `model: type: xgboost` uses XGBoost instead of LightGBM (see `configs/exp_012_xgboost.yaml`).
+- `model: type: random_forest`, `logistic` or `mlp` use scikit-learn's random forest, logistic
+  regression or neural network (exps 033–035, the predictor-type comparison in the report).
 - `model: per_unit: true` trains one model per unit instead of one pooled model.
 - `model: type: blend` averages several member models (`members:`, each a model config
   with a `weight`).

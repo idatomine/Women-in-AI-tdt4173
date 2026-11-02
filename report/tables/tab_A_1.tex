@@ -8,44 +8,44 @@
 \textbf{Internal name} & \textbf{Readable name} & \textbf{Family} & \textbf{Meaning} \\
 \midrule
 \endhead
-price\_z & Price z-score in week & Price shape & Hour's price minus the week's mean, divided by the week's standard deviation \\
-price\_rank & Price rank in week & Price shape & 0 = cheapest hour of the week, 1 = most expensive \\
-price\_rel & Price ÷ week level & Price shape & Hour's price divided by the week's mean price level \\
-price\_d24 & 24 h mean price ÷ week level & Price shape & Centred 24-hour rolling mean of the price, divided by the week's level \\
+price\_\allowbreak{}z & Price z-score in week & Price shape & Hour's price minus the week's mean, divided by the week's standard deviation \\
+price\_\allowbreak{}rank & Price rank in week & Price shape & 0 = cheapest hour of the week, 1 = most expensive \\
+price\_\allowbreak{}rel & Price ÷ week level & Price shape & Hour's price divided by the week's mean price level \\
+price\_\allowbreak{}d24 & 24 h mean price ÷ week level & Price shape & Centred 24-hour rolling mean of the price, divided by the week's level \\
 h & Hour in case (0–167) & Calendar & Position of the hour in the 168-hour horizon \\
 hod & Hour of day & Calendar & 0–23 \\
 doy & Day of year & Calendar & Day of year of the case start \\
 dow & Weekday & Calendar & Weekday of the case start \\
-net\_wv\_rel & Net water value ÷ week price & Water value & (Upstream − downstream water value at +7 d) divided by the week's price level \\
-wv\_trend & Water value trend & Water value & Relative change of the upstream water value from case start to +7 d \\
+net\_\allowbreak{}wv\_\allowbreak{}rel & Net water value ÷ week price & Water value & (Upstream − downstream water value at +7 d) divided by the week's price level \\
+wv\_\allowbreak{}trend & Water value trend & Water value & Relative change of the upstream water value from case start to +7 d \\
 fill & Upstream fill at start & Reservoirs & Volume of the plant's source reservoir at case start ÷ its maximum \\
-fill\_dn & Downstream fill at start & Reservoirs & Volume of the reservoir the plant releases into ÷ its maximum \\
-inflow\_wk & Week inflow ÷ reservoir size & Reservoirs & Inflow to the source reservoir over the week ÷ its maximum volume \\
+fill\_\allowbreak{}dn & Downstream fill at start & Reservoirs & Volume of the reservoir the plant releases into ÷ its maximum \\
+inflow\_\allowbreak{}wk & Week inflow ÷ reservoir size & Reservoirs & Inflow to the source reservoir over the week ÷ its maximum volume \\
 unit & Unit ID & Unit & Which of the 14 units (categorical) \\
-p\_max & Unit max output (MW) & Unit & Maximum production of the unit \\
+p\_\allowbreak{}max & Unit max output (MW) & Unit & Maximum production of the unit \\
 startcost & Unit start cost & Unit & Start cost from the topology file \\
 margin & Net margin ÷ week level & Price vs water value & Price − (upstream − downstream water value at +7 d), ÷ week mean level \\
-margin\_up & Price − upstream water value & Price vs water value & Price − upstream water value at +7 d, ÷ week's mean |price| (the key single rule) \\
-price\_over\_wv & Price ÷ upstream water value & Price vs water value & Ratio version of the margin \\
-margin\_net & Net margin ÷ mean |price| & Price vs water value & Same as the net margin, scaled by the mean absolute price \\
-scarcity\_start & Scarcity at start & Scarcity & Upstream water value at start ÷ this week's mean price (≈ SHOP's scarcity coefficient, 0–2) \\
-scarcity\_end & Scarcity at end & Scarcity & Upstream water value at +7 d ÷ next week's mean price \\
-next\_week\_price & Next week's price ÷ this week's & Scarcity & Is it better to save water for next week? \\
-profitable\_share & Share of profitable hours & Week economics & Share of the week's hours where price > upstream water value \\
-positive\_margin & Summed positive margin & Week economics & Sum of the positive margins over the week, scaled \\
-dp\_on\_x1 & DP: unit on & Dynamic programme & Unit is on in the plant's most profitable on/off path (start cost ×1) \\
-dp\_gap\_x1 & DP: regret of switching & Dynamic programme & How much profit is lost by taking the opposite decision this hour (×1) \\
-dp\_units\_x1 & DP: share of plant units on & Dynamic programme & Units on in the best path ÷ units at the plant (×1) \\
-dp\_on\_x10 & DP: unit on (10× start cost) & Dynamic programme & As above with 10× start costs (more persistent path) \\
-dp\_gap\_x10 & DP: regret (10× start cost) & Dynamic programme & As above with 10× start costs \\
-dp\_units\_x10 & DP: units on (10× start cost) & Dynamic programme & As above with 10× start costs \\
-partner\_dp\_units & Partner plant: DP units on & Tokke–Vinje coupling & For Tokke units: Vinje's DP schedule, and vice versa (empty for other units) \\
-partner\_dp\_gap & Partner plant: DP regret & Tokke–Vinje coupling & The partner plant's DP regret \\
-partner\_margin & Partner plant: margin & Tokke–Vinje coupling & The partner plant's price − water value margin \\
-lps2\_production & LP: plant production share & Relaxed LP & Production of the unit's plant in the LP solution ÷ plant capacity \\
-lps2\_unit\_on & LP: unit on (fractional) & Relaxed LP & How much of this unit is committed in the LP (0–1), following the plant's priority order \\
-lps2\_margin & LP: marginal profit & Relaxed LP & Price − LP water value of the source reservoir + LP water value of the target reservoir \\
-lps2\_water\_value & LP: hourly water value & Relaxed LP & Shadow price (dual) of water in the source reservoir at that hour \\
-lps2\_fill & LP: reservoir fill path & Relaxed LP & Source reservoir fill along the LP's optimal trajectory \\
+margin\_\allowbreak{}up & Price − upstream water value & Price vs water value & Price − upstream water value at +7 d, ÷ week's mean |price| (the key single rule) \\
+price\_\allowbreak{}over\_\allowbreak{}wv & Price ÷ upstream water value & Price vs water value & Ratio version of the margin \\
+margin\_\allowbreak{}net & Net margin ÷ mean |price| & Price vs water value & Same as the net margin, scaled by the mean absolute price \\
+scarcity\_\allowbreak{}start & Scarcity at start & Scarcity & Upstream water value at start ÷ this week's mean price (≈ SHOP's scarcity coefficient, 0–2) \\
+scarcity\_\allowbreak{}end & Scarcity at end & Scarcity & Upstream water value at +7 d ÷ next week's mean price \\
+next\_\allowbreak{}week\_\allowbreak{}price & Next week's price ÷ this week's & Scarcity & Is it better to save water for next week? \\
+profitable\_\allowbreak{}share & Share of profitable hours & Week economics & Share of the week's hours where price > upstream water value \\
+positive\_\allowbreak{}margin & Summed positive margin & Week economics & Sum of the positive margins over the week, scaled \\
+dp\_\allowbreak{}on\_\allowbreak{}x1 & DP: unit on & Dynamic programme & Unit is on in the plant's most profitable on/off path (start cost ×1) \\
+dp\_\allowbreak{}gap\_\allowbreak{}x1 & DP: regret of switching & Dynamic programme & How much profit is lost by taking the opposite decision this hour (×1) \\
+dp\_\allowbreak{}units\_\allowbreak{}x1 & DP: share of plant units on & Dynamic programme & Units on in the best path ÷ units at the plant (×1) \\
+dp\_\allowbreak{}on\_\allowbreak{}x10 & DP: unit on (10× start cost) & Dynamic programme & As above with 10× start costs (more persistent path) \\
+dp\_\allowbreak{}gap\_\allowbreak{}x10 & DP: regret (10× start cost) & Dynamic programme & As above with 10× start costs \\
+dp\_\allowbreak{}units\_\allowbreak{}x10 & DP: units on (10× start cost) & Dynamic programme & As above with 10× start costs \\
+partner\_\allowbreak{}dp\_\allowbreak{}units & Partner plant: DP units on & Tokke–Vinje coupling & For Tokke units: Vinje's DP schedule, and vice versa (empty for other units) \\
+partner\_\allowbreak{}dp\_\allowbreak{}gap & Partner plant: DP regret & Tokke–Vinje coupling & The partner plant's DP regret \\
+partner\_\allowbreak{}margin & Partner plant: margin & Tokke–Vinje coupling & The partner plant's price − water value margin \\
+lps2\_\allowbreak{}production & LP: plant production share & Relaxed LP & Production of the unit's plant in the LP solution ÷ plant capacity \\
+lps2\_\allowbreak{}unit\_\allowbreak{}on & LP: unit on (fractional) & Relaxed LP & How much of this unit is committed in the LP (0–1), following the plant's priority order \\
+lps2\_\allowbreak{}margin & LP: marginal profit & Relaxed LP & Price − LP water value of the source reservoir + LP water value of the target reservoir \\
+lps2\_\allowbreak{}water\_\allowbreak{}value & LP: hourly water value & Relaxed LP & Shadow price (dual) of water in the source reservoir at that hour \\
+lps2\_\allowbreak{}fill & LP: reservoir fill path & Relaxed LP & Source reservoir fill along the LP's optimal trajectory \\
 \bottomrule
 \end{longtable}
