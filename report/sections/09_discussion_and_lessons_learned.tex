@@ -1,0 +1,26 @@
+\section{Discussion and lessons learned}\label{sec:9}
+
+\begin{disposition}
+We will close with the lessons we would pass on, each with its evidence:
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Domain knowledge beat model choice.} Physics-based features added about +0.03 AUC (0.959 → 0.991), while switching between LightGBM and XGBoost, tuning, per-unit models and blends each changed the score by less than 0.002.
+\item
+  \textbf{Imitating an optimiser is best done with (a simplified copy of) the optimiser.} The relaxed LP turned a learning problem into a correction problem.
+\item
+  \textbf{New information beats re-expressed information.} Features that only rearranged existing inputs never helped; features that added physics (reservoir limits, coupling, minimum flows) always did.
+\item
+  \textbf{Check the physics before tuning.} One wrong river in the routing cost more than all tuning could recover (the Hyljelihyl bug).
+\item
+  \textbf{A strict validation protocol kept us honest.} Year-based folds with an embargo, a seed-noise threshold and a locked holdout year meant that most of our ``ideas'' were correctly rejected.
+\end{itemize}
+
+\textbf{Limitations.} Some labels may be suboptimal (slow optimiser runs); the LP is linear (fixed head, linearised efficiency) and has no true on/off decisions; overlapping cases disagree on 12\% of hours, which bounds what any model can reach; and we did not try neural networks.
+
+\textbf{Future work.} A small neural network (1D CNN) over the LP's hourly outputs as a second, more different model; a better start-state estimate for the first hours of each case; and a closer copy of SHOP (head-dependent production, true unit commitment with a time limit).
+\end{disposition}
+
+% Final text:
+

@@ -1,0 +1,42 @@
+\section{Validation strategy}\label{sec:3}
+
+\begin{disposition}
+This short section explains \emph{how we decided whether a change was an improvement}. It comes before the features and models because every result in the report depends on it.
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Why not a random split.} Neighbouring cases share 6 of 7 days and agree on about 88\% of their shared labels (Figure~\ref{fig:2.2}). If one case is in training and its neighbour in validation, the model has effectively seen most of the answer. Splitting the cases at random would therefore give a far too optimistic score. SINTEF's own paper used a random 80/20 split, so its numbers are not comparable to ours.
+\item
+  \textbf{Leave-one-year-out with an embargo.} We validate on one whole year at a time and train on the other years. One such train/validation split is called a \emph{fold}: the model is trained on the training part and scored on the validation year, which it has never seen. We also remove every training case that starts within 7 days of the validation year, on both sides, because a case that starts on 28 December contains the decisions for the first days of January (Table~\ref{tab:3.1}).
+\end{itemize}
+\end{disposition}
+
+% Final text:
+
+
+\begin{table}[H]
+  \centering\small
+  \caption{The four folds and the locked holdout}
+  \label{tab:3.1}
+  \adjustbox{max width=\linewidth}{\input{tables/tab_3_1}}
+\end{table}
+
+\begin{disposition}
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Four folds.} A = 2020 (very low prices), B = 2021 (rising prices), C = 2022 (crisis prices), D = 2019 (normal prices). We added 2019 because the other three are all unusual years and none resembles the test period; without a normal year the average could be steered towards changes that only help in extreme years. The score of a configuration is the mean AUC over the four folds.
+\item
+  \textbf{A locked holdout year (2018).} We never looked at 2018 while choosing features or settings, and scored it exactly once for the two final models, as an honest check that we had not overfitted the four folds.
+\item
+  \textbf{The acceptance rule.} We measured that changing only the random seed moves a fold by up to 0.0017 and the mean by up to 0.0008. A change was therefore accepted only if the mean improved by at least 0.001, at least 3 of 4 folds did not get worse, and no fold dropped by more than 0.002. Among equal scores we chose the simpler model. For borderline cases we ran a second seed. We will explain why this matters: with dozens of experiments, some changes would look better by pure luck, and a fixed rule protects against fooling ourselves.
+\item
+  \textbf{The public leaderboard} was used only as a sanity check after large steps (about one upload per step), never to choose between small variants, because it is a small sample of 2023--2024 and the final grade uses the private part.
+\item
+  \textbf{Final models} are retrained on all 2015--2022 cases with the chosen settings. The fold models are only used to score settings.
+\end{itemize}
+\end{disposition}
+
+% Final text:
+

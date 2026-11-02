@@ -1,0 +1,91 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=2cm]{geometry}
+\usepackage{graphicx}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{float}
+\usepackage{placeins}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\input{preamble}   % disposition boxes, long tables, special characters
+\usepackage{natbib}
+\usepackage{hyperref}
+
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{TDT4173 -- Unit Commitment}
+\cfoot{\thepage}
+
+\titlespacing*{\section}{0pt}{0.8em}{0.4em}
+\titlespacing*{\subsection}{0pt}{0.6em}{0.3em}
+\titlespacing*{\subsubsection}{0pt}{0.4em}{0.2em}
+
+\setlength{\parskip}{0pt}
+\setlength{\textfloatsep}{6pt}
+\setlength{\floatsep}{6pt}
+\setlength{\intextsep}{6pt}
+
+% Show the yellow disposition boxes while writing.
+% Switch to \showdispositionfalse to hide all of them (final PDF).
+\showdispositiontrue
+
+\begin{document}
+
+\begin{titlepage}
+    \thispagestyle{empty}
+    \centering
+    \vspace*{3cm}
+
+    {\Large TDT4173 - Modern Machine Learning in Practice\par}
+    \vspace{0.5cm}
+    {\LARGE\bfseries Predicting Unit Commitment in Hydropower Scheduling\par}
+
+    \vspace{2.5cm}
+
+    \begin{tabular}{ll}
+        \toprule
+        \textbf{Name} & \textbf{Student ID} \\
+        \midrule
+        Ida Tomine Berg         & XXXXXX \\
+        Ida Nikoline Rogne      & XXXXXX \\
+        Ingrid Kapstad Østgulen & XXXXXX \\
+        \bottomrule
+    \end{tabular}
+
+    \vspace{1.5cm}
+
+    \textbf{Project group:} 36 \\[0.3cm]
+    \textbf{Kaggle team name:} [36] Women in AI
+
+    \vfill
+
+    \today
+
+\end{titlepage}
+
+\newpage
+\tableofcontents
+\newpage
+
+\input{sections/01_introduction}
+\input{sections/02_exploratory_data_analysis}
+\input{sections/03_validation_strategy}
+\input{sections/04_feature_engineering}
+\input{sections/05_models_predictor_types}
+\input{sections/06_hyperparameters}
+\input{sections/07_model_interpretation}
+\input{sections/08_results}
+\input{sections/09_discussion_and_lessons_learned}
+
+% \nocite{*} lists every entry in references.bib even if it is not cited yet;
+% remove it once the text cites sources with \cite{key}.
+\nocite{*}
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\appendix
+\input{sections/A_feature_names}
+
+\end{document}

@@ -33,7 +33,11 @@ facts, the validation protocol, the feature backlog and the pitfalls.
   hand; rebuild them after changing any code they use.
 - `Report.ipynb`: the report deliverable (graders don't run it, so save it with outputs).
   Currently a disposition (📝 cells) plus complete figure/table code, run from the repo root
-  on the cached features and `experiments/` predictions. Edit it directly.
+  on the cached features and `experiments/` predictions. Edit it directly. Running it also
+  exports every numbered figure/table to `report/figures/` and `report/tables/`
+  (`show_figure` / `show_table`).
+- `report/`: the LaTeX report (`main.tex`, one file per section in `sections/`, with the
+  disposition in yellow boxes). The text is now written there, not in Report.ipynb.
 - `configs/`: one YAML per experiment (feature groups on/off, model settings).
 - `experiments/journal.md`: one row per run, auto-appended; Decision and Public LB filled
   by hand. `experiments/results.csv` is the machine-readable log.

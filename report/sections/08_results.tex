@@ -1,0 +1,36 @@
+\section{Results}\label{sec:8}
+
+\begin{disposition}
+A short section with the final numbers in one table (Table~\ref{tab:8.1}): per-fold validation AUC, the mean, the locked 2018 holdout, and the public leaderboard score for both final models, plus the highest virtual team for reference.
+\end{disposition}
+
+% Final text:
+
+
+\begin{table}[H]
+  \centering\small
+  \caption{Final results}
+  \label{tab:8.1}
+  \adjustbox{max width=\linewidth}{\input{tables/tab_8_1}}
+\end{table}
+
+\begin{disposition}
+What to say:
+
+\begin{itemize}
+\tightlist
+\item
+  Both models clear the highest virtual team (0.99040) on the public leaderboard by about 0.004.
+\item
+  The 2018 holdout (0.9877 / 0.9876) lies within the range of the validation folds (0.9868--0.9941), so we see no sign that our choices overfitted the four folds.
+\item
+  The public leaderboard score is higher than our validation mean. Possible explanation: 2023--2024 has more normal prices than our hardest validation years (2020, 2022).
+\item
+  Caveat: the final grade uses the private leaderboard, which we cannot see; differences of ±0.001 between our two models are noise.
+\item
+  Reproducibility: both short notebooks run from the raw data in about 9 minutes on a laptop and reproduce our submitted files byte for byte.
+\end{itemize}
+\end{disposition}
+
+% Final text:
+

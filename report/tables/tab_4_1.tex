@@ -1,0 +1,56 @@
+\begin{longtable}{p{4.4cm}p{5.2cm}llp{2.4cm}}
+\caption{\tablecaption}\label{tab:4.1} \\
+\toprule
+\textbf{experiment} & \textbf{change} & \textbf{mean} & \textbf{public LB} & \textbf{decision} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{experiment} & \textbf{change} & \textbf{mean} & \textbf{public LB} & \textbf{decision} \\
+\midrule
+\endhead
+exp\_001\_baseline\_v2 & baseline\_v2 (31 features, pooled LightGBM) ported to the harness & 0.9593 &  &  \\
+exp\_002\_no\_raw\_eur & exp 001 without the 6 raw EUR level features (price, price\_wkmean, raw water values) & 0.9642 &  & Pending \\
+exp\_003a\_seed1\_of\_001 & exp 001 with seed 1 (noise check) & 0.9601 &  & Noise reference (not a candidate) \\
+exp\_003b\_seed1\_of\_002 & exp 002 with seed 1 (noise check) & 0.9646 &  & Noise reference \\
+exp\_004\_no\_raw\_price & exp 001 without raw price levels (price, price\_wkmean); raw water values kept & 0.9613 &  & Drop \\
+exp\_005\_margin\_context & exp 002 + margin\_context (margin in neighbouring hours, rolling means, within-day price rank) & 0.9649 &  & Drop \\
+exp\_006\_profitable\_blocks & exp 002 + profitable\_blocks (length of the profitable run around each hour) & 0.9646 &  & Drop \\
+exp\_007\_hydro\_pressure & exp 002 + hydro\_pressure (week inflow ÷ free space, upstream and downstream) & 0.9652 &  & Keep \\
+exp\_008\_relaxed\_dp & exp 007 + relaxed\_dp (per-plant DP with start costs: on/off path, regret, units on) & 0.9663 &  & Keep \\
+exp\_009\_tokke\_vinje & exp 008 + tokke\_vinje (each plant sees the partner plant's DP schedule and margin) & 0.9789 &  & Keep \\
+exp\_010\_per\_unit & exp 009 with one LightGBM model per unit instead of one pooled model & 0.9773 &  & Drop \\
+exp\_011\_cascade & exp 009 + cascade (each plant sees the DP schedule of the plants feeding its reservoir) & 0.9797 &  & Pending \\
+exp\_012\_xgboost & exp 009 with XGBoost instead of LightGBM (same features, matched settings) & 0.9780 &  & Drop as main model \\
+exp\_013\_relaxed\_lp & exp 009 + relaxed\_lp (LP of the whole watercourse: production, effective water value, margin, fill) & 0.9829 &  & Keep \\
+exp\_014a\_without\_relaxed\_dp & ablation: exp 013 without relaxed\_dp & 0.9817 &  & Keep DP \\
+exp\_014b\_without\_tokke\_vinje & ablation: exp 013 without tokke\_vinje & 0.9758 &  & Keep coupling \\
+exp\_014c\_without\_hydro\_pressure & ablation: exp 013 without hydro\_pressure & 0.9827 &  & Remove hydro\_pressure \\
+exp\_016\_capacity & exp 014c with more capacity: 60\% of rows (was 35\%), 1500 trees at learning rate 0.03 (was 800 at 0.05) & 0.9826 &  & Drop \\
+exp\_017\_lp\_minflow & exp 014c with the LP min-flow variant (relaxed\_lp\_minflow instead of relaxed\_lp) & 0.9840 & 0.99042 (VT1: 0.99040) & Keep \\
+exp\_018\_smoothing & exp 017's predictions smoothed within each case (centred rolling mean, 2–11 h), scored offline on its saved fold predictions & 0.9837 &  & Drop \\
+exp\_020\_blend\_check & LightGBM (exp 009) + XGBoost (exp 012) averaged, same features, scored offline on saved fold predictions (LightGBM weight 0.7 shown) & 0.9789 &  & No gain at any weight (0 \\
+exp\_019\_storage\_upstream & exp 017 + storage\_upstream (fill of the real storage lake behind tiny pass-through reservoirs: Haukeli sees Langeidvatn) & 0.9841 &  & Drop \\
+exp\_022\_priority\_check & exp 017's predictions with the plant priority order enforced (P(lower unit) ≤ P(higher unit), Tokke G1≥G3≥G4≥G2, Vinje G1≥G2≥G3), offline & 0.9840 &  & No effect \\
+exp\_021\_lp\_commitment & exp 017 with the LP variant that adds a relaxed unit commitment (start/stop costs, p\_min): relaxed\_lp\_uc instead of relaxed\_lp\_minflow & 0.9850 & 0.99067 & Keep (decided with exp 023): +0 \\
+exp\_023a\_seed1\_of\_017 & exp\_017\_lp\_minflow with seed 1 (noise check for the 021 decision) & 0.9839 &  & Noise reference for the 021 decision (017 with seed 1: −0 \\
+exp\_023b\_seed1\_of\_021 & exp\_021\_lp\_commitment with seed 1 (noise check for the 021 decision) & 0.9850 &  & Noise reference: 021 with seed 1 passes vs 017 with seed 1 (+0 \\
+exp\_024\_lp\_shop & exp 021 with the more SHOP-like LP (efficiency curves, head losses, SHOP spill/bypass costs): relaxed\_lp\_shop instead of relaxed\_lp\_uc & 0.9865 & 0.99099 & Keep \\
+exp\_025a\_water\_budget\_no\_lp & exp 009 (LightGBM without LP) + water\_budget & 0.9798 &  & Borderline, no-LP base only \\
+exp\_025b\_water\_budget & exp 024 (best, with LP) + water\_budget & 0.9866 &  & Drop \\
+exp\_026a\_forward\_margin\_no\_lp & exp 009 (LightGBM without LP) + forward\_margin & 0.9790 &  & Drop \\
+exp\_026b\_forward\_margin & exp 024 (best, with LP) + forward\_margin & 0.9866 &  & Drop \\
+exp\_027a\_head\_proxy\_no\_lp & exp 009 (LightGBM without LP) + head\_proxy & 0.9789 &  & Drop \\
+exp\_027b\_head\_proxy & exp 024 (best, with LP) + head\_proxy & 0.9863 &  & Drop \\
+exp\_028a\_leaves\_255 & exp 024 with num\_leaves 255 (was 127): bigger trees, more interactions & 0.9864 &  & Drop \\
+exp\_028b\_leaves\_31 & exp 024 with num\_leaves 31 (was 127): smaller trees, more regularised & 0.9859 &  & Drop \\
+exp\_028c\_min\_leaf\_50 & exp 024 with min\_child\_samples 50 (was 200): finer leaves & 0.9862 &  & Drop \\
+exp\_028d\_min\_leaf\_1000 & exp 024 with min\_child\_samples 1000 (was 200): coarser leaves, more regularised & 0.9862 &  & Drop \\
+exp\_028e\_colsample\_05 & exp 024 with colsample\_bytree 0.5 (was 0.8): more feature sampling per tree & 0.9861 &  & Drop \\
+exp\_028f\_per\_unit & exp 024 with one LightGBM model per unit (was pooled), now with the full LP feature set & 0.9851 &  & Drop \\
+exp\_029\_main\_river & exp 024 with main\_river in the LP (Hyljelihyl valued along r\_Hyljelihyl, not the bypass): relaxed\_lp\_shop2 instead of relaxed\_lp\_shop & 0.9912 & 0.99424 & Keep \\
+exp\_030\_xgb\_main\_river & exp 029 with XGBoost instead of LightGBM (same features, settings matched as in exp 012): candidate for final pick \#2 & 0.9910 & 0.99429 & Candidate for final pick \#2 (not a feature change, so the acceptance rule doesn't apply) \\
+exp\_031a\_rank\_gap & exp 029 + lpx\_rank\_gap and lpx\_plant\_on (LP units-on minus the unit's rank, unclipped; plant share on) & 0.9911 &  & Drop \\
+exp\_031b\_joint\_fill & exp 029 + lpx\_joint\_fill (LP fill of the tunnel-joined lake group for Vinje and Kjela) & 0.9912 &  & Drop \\
+exp\_032\_slow\_solver\_weight & exp 029 with cases from slow SHOP runs (≥ 900 s, 6\%) down-weighted to 0.3 in training (possible label noise) & 0.9913 &  & Drop \\
+\bottomrule
+\end{longtable}

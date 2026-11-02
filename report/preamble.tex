@@ -1,0 +1,46 @@
+% =====================================================================
+%  preamble.tex: extra packages and settings for the report sections
+%  (disposition boxes, long tables, special characters). Loaded from
+%  main.tex after the group's own packages and before natbib/hyperref.
+% =====================================================================
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[utf8]{inputenc}
+  \usepackage[T1]{fontenc}
+  \usepackage{lmodern}
+\fi
+\usepackage{longtable}       % tables that can continue over several pages
+\usepackage{array}
+\usepackage{adjustbox}       % shrink wide tables to the page width
+\usepackage{xcolor}
+\usepackage[most]{tcolorbox}
+\usepackage{environ}
+\usepackage{newunicodechar}
+
+% Number figures and tables per section (Figure 2.3, Table 7.1, ...)
+\numberwithin{figure}{section}
+\numberwithin{table}{section}
+
+% Characters that are typed directly in the text
+\newunicodechar{−}{\ensuremath{-}}
+\newunicodechar{≈}{\ensuremath{\approx}}
+\newunicodechar{≤}{\ensuremath{\leq}}
+\newunicodechar{≥}{\ensuremath{\geq}}
+\newunicodechar{→}{\ensuremath{\rightarrow}}
+\newunicodechar{÷}{\ensuremath{\div}}
+\newunicodechar{×}{\ensuremath{\times}}
+\newunicodechar{±}{\ensuremath{\pm}}
+\newunicodechar{³}{\textsuperscript{3}}
+
+% Lists produced by pandoc
+\providecommand{\tightlist}{\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+
+% Placeholder for things still to fill in: \todo{...} prints red text
+\newcommand{\todo}[1]{\textcolor{red}{\textbf{TODO:} #1}}
+
+% Disposition boxes: \begin{disposition} ... \end{disposition}
+\newif\ifshowdisposition
+\newtcolorbox{dispbox}{breakable, enhanced, colback=yellow!7, colframe=orange!70!black,
+  boxrule=0.4pt, arc=1mm, left=2mm, right=2mm, top=1mm, bottom=1mm,
+  title=Disposition, fonttitle=\footnotesize\bfseries}
+\NewEnviron{disposition}{\ifshowdisposition\begin{dispbox}\small\BODY\end{dispbox}\fi}

@@ -1,0 +1,14 @@
+{
+ "2.1": "Water value ÷ next week's mean price (all reservoirs and days). Median 1.00, 1% 0.00, 99% 2.00",
+ "2.2": "Label agreement between case d+1 and case d on the same clock hour (overall 87.8%)",
+ "2.3": "Electricity price, water value and ON decisions",
+ "2.4": "Share of hours ON per unit and year",
+ "2.5": "Mean day-ahead price per year (blue = training years, orange = test years)",
+ "4.1": "Validation AUC along the accepted changes",
+ "7.1": "Gain importance, final LightGBM model (fold B)",
+ "7.2": "SHAP summary, top 12 features. Each dot is one unit-hour",
+ "7.3": "How the LP features push the prediction (fold B, 2021)",
+ "7.4": "AUC per unit, mean over the four validation years",
+ "7.5": "AUC per hour of the horizon (final model, folds A–D)",
+ "7.6": "Case starting 2021-04-01"
+}

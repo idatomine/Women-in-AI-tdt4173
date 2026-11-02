@@ -1,0 +1,15 @@
+\begin{tabular}{llllll}
+\toprule
+\textbf{} & \textbf{A (2020)} & \textbf{B (2021)} & \textbf{C (2022)} & \textbf{D (2019)} & \textbf{mean} \\
+\midrule
+Rule: price − upstream water value (+7 d) & 0.8559 & 0.8488 & 0.9115 & 0.8629 & 0.8698 \\
+Relaxed LP alone: unit on & 0.9318 & 0.9483 & 0.9554 & 0.9291 & 0.9411 \\
+Relaxed LP alone: marginal profit & 0.951 & 0.961 & 0.9595 & 0.9568 & 0.9571 \\
+LightGBM without LP features (exp 009) & 0.9667 & 0.9837 & 0.9834 & 0.9817 & 0.9789 \\
+XGBoost without LP features (exp 012) & 0.965 & 0.9833 & 0.983 & 0.9806 & 0.978 \\
+LightGBM, one model per unit (exp 028f) & 0.9808 & 0.9917 & 0.9872 & 0.9804 & 0.985 \\
+LightGBM, pooled (exp 029, final 1) & 0.9868 & 0.9941 & 0.9922 & 0.9919 & 0.9912 \\
+XGBoost, pooled (exp 030, final 2) & 0.986 & 0.994 & 0.9922 & 0.9916 & 0.991 \\
+Blend 50/50 of exp 029 and 030 & 0.9867 & 0.9942 & 0.9924 & 0.9919 & 0.9913 \\
+\bottomrule
+\end{tabular}

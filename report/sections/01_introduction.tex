@@ -1,0 +1,24 @@
+\section{Introduction}\label{sec:1}
+
+\begin{disposition}
+\textbf{The problem.} SINTEF's optimisation software SHOP plans the operation of the Tokke--Vinje hydropower system in southern Norway (17 reservoirs, 9 power plants, 14 generating units). For every \emph{case}, a 168-hour week starting at midnight on a given day, SHOP decides for every unit and every hour whether it is on or off. The task is to predict these on/off decisions from the same inputs SHOP received, so that a fast ML prediction could later help speed up or warm-start the optimiser (SINTEF's InterOpt project). The output is a probability for each of the 14 × 168 = 2352 unit-hours per case. We have 2922 labelled cases (one per day, 2015--2022) and must predict 725 test cases (2023--2024).
+
+\textbf{The metric and what it implies.} The score is \emph{micro-averaged ROC-AUC}: all 2352 × 725 predictions are ranked together in one list, and the score is the probability that a random ON hour is ranked above a random OFF hour. Two consequences shaped the whole project, and we will state them here because later decisions refer back to them:
+
+\begin{itemize}
+\tightlist
+\item
+  Only the \emph{ranking} of the predictions matters, not whether they are calibrated probabilities.
+\item
+  The ranking is \emph{global across units}. A 0.7 for the tiny Haukeli unit must mean the same as a 0.7 for a large Tokke unit. This is why we use one pooled model for all units, and why we never normalise predictions per unit (Section~\ref{sec:5}).
+\end{itemize}
+
+\textbf{Our approach in one paragraph.} We found early that SHOP's decisions follow a simple economic logic (run when the electricity price is higher than the value of the water you use), but that the details depend on physics that simple features cannot capture: reservoirs that fill up or run empty, plants that share water, minimum river flows and start costs. We therefore built our own simplified version of SHOP's optimisation problem (a \emph{relaxed linear program}, LP), solved it for every case, and fed its solution as features into a gradient-boosted tree model (LightGBM), which learns to correct the LP's systematic errors. This raised the validation AUC from 0.959 (economic hand-made features) to 0.991.
+
+\textbf{Headline result.} Mean leave-one-year-out AUC 0.9912 (LightGBM) and 0.9910 (XGBoost); public leaderboard 0.99414 and 0.99429. Both are above the highest virtual team (0.99040).
+
+\textbf{Structure of the report:} brief guide to sections 2--9.
+\end{disposition}
+
+% Final text:
+

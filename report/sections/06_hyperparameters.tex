@@ -1,0 +1,58 @@
+\section{Hyperparameters}\label{sec:6}
+
+\begin{disposition}
+The course requires us to explain how the values written in the short notebooks were chosen. We will go through them one by one and then show the tuning experiments.
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Starting point.} The LightGBM settings came from our first baseline: 800 trees, learning rate 0.05, 127 leaves per tree, at least 200 rows per leaf, 80\% of rows and 80\% of features sampled per tree (Table~\ref{tab:6.1}). These are common, moderately regularised values for a large dataset. The minimum of 200 rows per leaf matters because neighbouring hours are almost identical rows, so very small leaves would memorise single weeks.
+\end{itemize}
+\end{disposition}
+
+% Final text:
+
+
+\begin{table}[H]
+  \centering\small
+  \caption{The hyperparameters in the short notebooks}
+  \label{tab:6.1}
+  \adjustbox{max width=\linewidth}{\input{tables/tab_6_1}}
+\end{table}
+
+\begin{disposition}
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Row subsampling (35\% of rows).} The full training matrix has about 6.9 million rows, which does not fit comfortably in memory on our laptops. Neighbouring hours of the same week carry almost the same information, so a random 35\% loses very little. We checked this: 60\% of rows with 1500 trees (exp 016) gave −0.0001 at three times the training time.
+\item
+  \textbf{Tuning sweep (exps 028a--e).} We varied the number of leaves (31, 255), the minimum leaf size (50, 1000) and feature sampling (0.5) (Table~\ref{tab:6.2}). Every variant was equal or slightly worse (−0.0006 to −0.0000). Our interpretation: the model is limited by its features, not by its capacity or regularisation, which is also why our effort went into the features.
+\end{itemize}
+\end{disposition}
+
+% Final text:
+
+
+\begin{table}[H]
+  \centering\small
+  \caption{Capacity and tuning experiments (compared with their reference)}
+  \label{tab:6.2}
+  \adjustbox{max width=\linewidth}{\input{tables/tab_6_2}}
+\end{table}
+
+\begin{disposition}
+\begin{itemize}
+\tightlist
+\item
+  \textbf{No early stopping.} We used a fixed number of trees, since the score was flat across settings and a fixed number makes the final model trained on all years identical in setup to the validated one.
+\item
+  \textbf{XGBoost} settings were translated from LightGBM's (leaf-wise growth with 127 leaves, \texttt{min\_child\_weight} 50 ≈ 200 rows, because each row's hessian is at most 0.25) rather than tuned separately.
+\item
+  \textbf{Determinism.} Fixed seed, 4 threads and LightGBM's deterministic mode, so that the short notebooks reproduce our Kaggle files exactly (verified: byte-identical output in a fresh environment, about 9 minutes per notebook).
+\item
+  \textbf{LP settings} (efficiency-curve pieces, spill and bypass costs) come from SHOP's topology file, not from tuning.
+\end{itemize}
+\end{disposition}
+
+% Final text:
+

@@ -1,0 +1,99 @@
+\section{Models (predictor types)}\label{sec:5}
+
+\begin{disposition}
+We will compare all predictor types we tried \emph{on the same folds}, from no learning at all to the final models (Table~\ref{tab:5.1}), and explain why some work better than others.
+\end{disposition}
+
+% Final text:
+
+
+\begin{table}[H]
+  \centering\small
+  \caption{Predictor types on the same folds (A–D)}
+  \label{tab:5.1}
+  \adjustbox{max width=\linewidth}{\input{tables/tab_5_1}}
+\end{table}
+
+\begin{disposition}
+\emph{Note:} exp 028f (one model per unit) uses the LP features of exp 024, the previous LP version; compare it with exp 024 (0.9865), not with exp 029.
+\end{disposition}
+
+% Final text:
+
+
+\subsection{Rules without learning (baselines)}\label{sec:5.1}
+
+\begin{disposition}
+\begin{enumerate}
+\def\labelenumi{(\alph{enumi})}
+\tightlist
+\item
+  The single economic rule ``price − upstream water value at +7 d'' ranks all unit-hours by one number. (b) The relaxed LP alone, ranking by its fractional ``unit on'' or by its marginal profit. Including these shows how much comes from the physics and how much from the machine learning: the LP alone is already strong, and the GBDT on top closes most of the remaining gap.
+\end{enumerate}
+\end{disposition}
+
+% Final text:
+
+
+\subsection{Gradient-boosted trees: LightGBM (final model 1)}\label{sec:5.2}
+
+\begin{disposition}
+Why this model type: the data is tabular (one row per case × unit × hour, about 6.9 million rows); trees capture interactions such as ``the partner plant runs \emph{and} the margin is positive'' without us specifying them; they are robust to features on different scales and to redundant features; they handle missing values (the partner features are empty for most units); and they train in under a minute. With about 2900 cases, tree ensembles are the usual strong choice for tabular data (Grinsztajn et al., 2022). We use one \emph{pooled} model for all 14 units with the unit ID as a categorical feature.
+\end{disposition}
+
+% Final text:
+
+
+\subsection{XGBoost (final model 2)}\label{sec:5.3}
+
+\begin{disposition}
+Same features, settings matched to LightGBM (leaf-wise growth, same number of leaves and trees). It scores the same as LightGBM (0.9910 vs 0.9912), and its test predictions correlate 0.997 with LightGBM's. Explanation: both are gradient-boosted trees, and with these features the information, not the learning algorithm, sets the limit. We still chose it as the second submission because it is a different implementation, which gives some insurance on the private leaderboard, and its public score was slightly higher.
+\end{disposition}
+
+% Final text:
+
+
+\subsection{One model per unit versus one pooled model (exps 010, 028f)}\label{sec:5.4}
+
+\begin{disposition}
+Separate models for each unit were worse (−0.0016 and −0.0014). Explanations: (1) the economics are shared by all units, so a pooled model learns them from 14× more data; (2) separate models produce probabilities on separate scales, while micro-AUC ranks all units in one list, so a common scale helps directly.
+\end{disposition}
+
+% Final text:
+
+
+\subsection{Blends (exp 020 and LightGBM + XGBoost on the final features)}\label{sec:5.5}
+
+\begin{disposition}
+Averaging LightGBM and XGBoost gave +0.0000 to +0.0001. Explanation: blending only helps when models make \emph{different} errors, and these two make nearly the same errors because they see the same features.
+\end{disposition}
+
+% Final text:
+
+
+\subsection{Integer optimisation (MILP) instead of the LP}\label{sec:5.6}
+
+\begin{disposition}
+Solving the LP with true on/off decisions is closer to SHOP but gave \emph{worse} features (units-on AUC 0.911 vs 0.945). Explanation: AUC rewards knowing \emph{how close} a decision is; the fractional LP value carries that information, a hard 0/1 decision throws it away.
+\end{disposition}
+
+% Final text:
+
+
+\subsection{Post-processing we tried}\label{sec:5.7}
+
+\begin{disposition}
+Smoothing predictions over neighbouring hours (worse at every window size, because the labels switch sharply and the LP timing is precise); enforcing the plant priority order (no effect, the model already respects it); averaging predictions over overlapping cases (worse, because neighbouring cases are solved independently and disagree on 12\% of hours).
+\end{disposition}
+
+% Final text:
+
+
+\subsection{Neural networks (not trained)}\label{sec:5.8}
+
+\begin{disposition}
+We will be honest that we did not train a neural network, and explain why: with about 2900 weeks of data, tree models on tabular features are the safer choice; SINTEF's paper shows that neural networks on this dataset mainly add a small correction on top of the relaxed LP's solution; and our time went into the LP, which was where the gains were. A 1D CNN over the LP's hourly outputs would be the natural next model to try.
+\end{disposition}
+
+% Final text:
+
