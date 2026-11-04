@@ -55,5 +55,9 @@
 034\_\allowbreak{}logistic & exp 029 with logistic regression (linear model) instead of LightGBM (same features) & 0.9818 &  & Predictor-type comparison (report §5) \\
 033\_\allowbreak{}random\_\allowbreak{}forest & exp 029 with Random Forest (bagged trees, no boosting) instead of LightGBM (same features) & 0.9876 &  & Predictor-type comparison (report §5) \\
 035\_\allowbreak{}mlp & exp 029 with MLP neural network (2 hidden layers, 128 and 64 units) instead of LightGBM (same features) & 0.9866 &  & Predictor-type comparison (report §5) \\
+037\_\allowbreak{}terminal\_\allowbreak{}efficiency & Terminal water valued at efficient-segment energy conversion & 0.9919 &  & Positive on all four years, but below the 0.001 acceptance threshold alone \\
+038\_\allowbreak{}dispatch\_\allowbreak{}context & Efficient terminal valuation plus LP temporal/cascade and start-cost context & 0.9929 &  & Keep \\
+039\_\allowbreak{}dispatch\_\allowbreak{}capacity & Dispatch context with more training rows and boosting iterations & 0.9930 &  & Best local candidate \\
+040\_\allowbreak{}xgb\_\allowbreak{}dispatch\_\allowbreak{}capacity & XGBoost counterpart to exp 039: identical 56 features, 60\% rows, 2200 trees at learning rate 0.03 & 0.9927 &  & Keep as the matched XGBoost counterpart to 039 \\
 \bottomrule
 \end{longtable}
