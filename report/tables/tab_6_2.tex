@@ -1,14 +1,12 @@
-\begin{tabular}{lllllll}
+\begin{tabular}{l>{\raggedright\arraybackslash}p{0.33\linewidth}lllll}
 \toprule
-\textbf{name} & \textbf{A} & \textbf{B} & \textbf{C} & \textbf{D} & \textbf{mean} & \textbf{setting} \\
+\textbf{Exp} & \textbf{Change} & \textbf{A (2020)} & \textbf{B (2021)} & \textbf{C (2022)} & \textbf{D (2019)} & \textbf{mean} \\
 \midrule
-exp\_\allowbreak{}014c\_\allowbreak{}without\_\allowbreak{}hydro\_\allowbreak{}pressure & 0.9735 & 0.9886 & 0.9868 & 0.9818 & 0.9827 & reference for 016 \\
-exp\_\allowbreak{}016\_\allowbreak{}capacity & 0.9731 & 0.9885 & 0.987 & 0.9818 & 0.9826 & 60\% of rows, 1500 trees, lr 0.03 \\
-exp\_\allowbreak{}024\_\allowbreak{}lp\_\allowbreak{}shop & 0.9832 & 0.9921 & 0.9881 & 0.9824 & 0.9865 & reference for 028a–e \\
-exp\_\allowbreak{}028a\_\allowbreak{}leaves\_\allowbreak{}255 & 0.9828 & 0.9922 & 0.988 & 0.9826 & 0.9864 & 255 leaves \\
-exp\_\allowbreak{}028b\_\allowbreak{}leaves\_\allowbreak{}31 & 0.9818 & 0.9917 & 0.9883 & 0.9818 & 0.9859 & 31 leaves \\
-exp\_\allowbreak{}028c\_\allowbreak{}min\_\allowbreak{}leaf\_\allowbreak{}50 & 0.9822 & 0.9921 & 0.9881 & 0.9824 & 0.9862 & min 50 rows per leaf \\
-exp\_\allowbreak{}028d\_\allowbreak{}min\_\allowbreak{}leaf\_\allowbreak{}1000 & 0.9828 & 0.9918 & 0.9882 & 0.9821 & 0.9862 & min 1000 rows per leaf \\
-exp\_\allowbreak{}028e\_\allowbreak{}colsample\_\allowbreak{}05 & 0.9823 & 0.992 & 0.9881 & 0.9822 & 0.9861 & 50\% of features per tree \\
+016 & 60\% of rows, 1500 trees, learning rate 0.03 & −0.0004 & −0.0001 & +0.0002 & +0.0001 & −0.0001 \\
+028a & 255 leaves (was 127) & −0.0004 & +0.0001 & −0.0001 & +0.0002 & −0.0000 \\
+028b & 31 leaves (was 127) & −0.0015 & −0.0004 & +0.0002 & −0.0007 & −0.0006 \\
+028c & at least 50 rows per leaf (was 200) & −0.0010 & +0.0000 & −0.0001 & +0.0000 & −0.0002 \\
+028d & at least 1000 rows per leaf (was 200) & −0.0005 & −0.0002 & +0.0001 & −0.0003 & −0.0002 \\
+028e & 50\% of features per tree (was 80\%) & −0.0010 & −0.0001 & −0.0001 & −0.0002 & −0.0003 \\
 \bottomrule
 \end{tabular}

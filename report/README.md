@@ -14,3 +14,10 @@ submitted as `Report.pdf`.
 
 Cross-references update automatically: `Figure~\ref{fig:2.3}`, `Table~\ref{tab:7.1}`,
 `Section~\ref{sec:4.8}`.
+
+The matched-model continuation exports two additional tables using
+`.venv/bin/python tools/build_paired_results.py` from the repository root:
+`tables/tab_updated_models.tex` and `tables/tab_updated_hyperparameters.tex`.
+These compare the previous 029/030 pair with the improved 039/040 pair. The existing
+report text and historical tables are preserved; see
+[the update guide](../docs/PAIRED_MODELS_2026-11-04.md) before replacing them.

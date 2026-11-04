@@ -1,17 +1,6 @@
 \section{Hyperparameters}\label{sec:6}
 
-\begin{disposition}
-The course requires us to explain how the values written in the short notebooks were chosen. We will go through them one by one and then show the tuning experiments.
-
-\begin{itemize}
-\tightlist
-\item
-  \textbf{Starting point.} The LightGBM settings came from our first baseline: 800 trees, learning rate 0.05, 127 leaves per tree, at least 200 rows per leaf, 80\% of rows and 80\% of features sampled per tree (Table~\ref{tab:6.1}). These are common, moderately regularised values for a large dataset. The minimum of 200 rows per leaf matters because neighbouring hours are almost identical rows, so very small leaves would memorise single weeks.
-\end{itemize}
-\end{disposition}
-
-% Final text:
-
+Hyperparameters are the settings chosen before training, such as the number of trees and how large each tree may be. Table~\ref{tab:6.1} lists our values. We did not use an automatic search, such as a grid search, which tries many combinations of settings and keeps the one with the highest validation score. Training the same model with a different random seed alone changes our mean AUC by up to 0.0008, which is as large as the differences between reasonable settings. Among many combinations, some would score high only by luck on our four validation years, and a search would tend to pick one of these rather than one that is actually better on new data. Instead we started from values we had reasons for and tested changes one at a time, judged by the same acceptance rule as the features (Section~\ref{sec:3}).
 
 \begin{table}[H]
   \centering\small
@@ -20,39 +9,31 @@ The course requires us to explain how the values written in the short notebooks 
   \adjustbox{max width=\linewidth}{\input{tables/tab_6_1}}
 \end{table}
 
-\begin{disposition}
-\begin{itemize}
-\tightlist
-\item
-  \textbf{Row subsampling (35\% of rows).} The full training matrix has about 6.9 million rows, which does not fit comfortably in memory on our laptops. Neighbouring hours of the same week carry almost the same information, so a random 35\% loses very little. We checked this: 60\% of rows with 1500 trees (exp 016) gave −0.0001 at three times the training time.
-\item
-  \textbf{Tuning sweep (exps 028a--e).} We varied the number of leaves (31, 255), the minimum leaf size (50, 1000) and feature sampling (0.5) (Table~\ref{tab:6.2}). Every variant was equal or slightly worse (−0.0006 to −0.0000). Our interpretation: the model is limited by its features, not by its capacity or regularisation, which is also why our effort went into the features.
-\end{itemize}
-\end{disposition}
+\subsection{The values we chose and why}\label{sec:6.values}
 
-% Final text:
+Three settings were chosen specifically for our data.
 
+\begin{enumerate}
+  \item \textbf{Minimum leaf size (200 rows).} Neighbouring hours of the same unit are almost identical rows. With LightGBM's default of 20 rows, a leaf could describe a single unit on a single day and simply memorise it. Requiring 200 rows forces every leaf to cover many weeks or units, which makes this our main protection against overfitting. 200 is a round number large enough for this; 50 and 1000 rows both did slightly worse.
+
+  \item \textbf{Tree size (127 leaves).} The default is 31. The important effects in our problem are interactions between several features, for example between the unit, the LP's units on and the partner plant's schedule. Larger trees can capture such combinations, and with millions of rows there is enough data to support them. 127 leaves is about as many as a full tree of depth 7, which is a common size for large datasets; 31 and 255 leaves did no better.
+
+  \item \textbf{Training rows (35\%).} Each model is trained on a random 35\% of the rows in its training years. Only the training rows are sampled: the model is always scored on every row of the validation year. Since neighbouring hours and overlapping cases give nearly identical rows, a sample should lose little information. Training on 60\% of the rows, together with more trees, gave the same score at about three times the training time (exp 016, Section~\ref{sec:6.tuning}). We therefore kept 35\%, which made each experiment faster, so we could test more ideas.
+\end{enumerate}
+
+The remaining settings are common choices: 800 trees with a learning rate of 0.05, so that the model learns in many small steps, each tree trained on 80\% of the rows and features, and a fixed seed so the results are reproducible. XGBoost uses the same settings translated to its own parameters, so the two final models differ only in implementation. The only setting that needs translating is the minimum leaf size, which XGBoost measures as a summed weight rather than a number of rows (Table~\ref{tab:6.1}). The other models in Section~\ref{sec:5.others} were not tuned, so their scores are lower estimates of what they could reach.
+
+\subsection{Tuning experiments}\label{sec:6.tuning}
+
+To check our values, we made the model both more flexible and simpler: larger and smaller trees, smaller and larger leaves, and fewer features per tree. We also tried more rows and more trees. Table~\ref{tab:6.2} shows the change from the reference model.
 
 \begin{table}[H]
   \centering\small
-  \caption{Capacity and tuning experiments (compared with their reference)}
+  \caption{Tuning experiments: change in AUC from the reference model (exp 014c for 016, exp 024 for 028a--e)}
   \label{tab:6.2}
   \adjustbox{max width=\linewidth}{\input{tables/tab_6_2}}
 \end{table}
 
-\begin{disposition}
-\begin{itemize}
-\tightlist
-\item
-  \textbf{No early stopping.} We used a fixed number of trees, since the score was flat across settings and a fixed number makes the final model trained on all years identical in setup to the validated one.
-\item
-  \textbf{XGBoost} settings were translated from LightGBM's (leaf-wise growth with 127 leaves, \texttt{min\_child\_weight} 50 ≈ 200 rows, because each row's hessian is at most 0.25) rather than tuned separately.
-\item
-  \textbf{Determinism.} Fixed seed, 4 threads and LightGBM's deterministic mode, so that the short notebooks reproduce our Kaggle files exactly (verified: byte-identical output in a fresh environment, about 9 minutes per notebook).
-\item
-  \textbf{LP settings} (efficiency-curve pieces, spill and bypass costs) come from SHOP's topology file, not from tuning.
-\end{itemize}
-\end{disposition}
+No change improved the score. The mean changed by between $-0.0006$ and $0.0000$, so none passed the acceptance rule. The largest drops were all in 2020, our hardest year, where smaller trees ($-0.0015$) and smaller leaves ($-0.0010$) hurt most. Since moving in either direction made the model no better or slightly worse, our starting values are close to the best for these features. More rows and trees (exp 016) did not help either, which suggests that the 35\% sample is enough.
 
-% Final text:
-
+We concluded that the model was limited by the information in its features, not by its settings. This matches the rest of the project, where we spent the most time on new features and achieved the largest gains from them (Section~\ref{sec:8}). The tests used the features of exp 024 and were not repeated on the final ones, but given the flat response we would expect any gain from re-tuning to be within noise.

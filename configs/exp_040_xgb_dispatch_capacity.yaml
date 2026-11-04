@@ -1,0 +1,37 @@
+name: exp_040_xgb_dispatch_capacity
+change: 'XGBoost counterpart to exp 039: identical 56 features, 60% rows, 2200 trees
+  at learning rate 0.03'
+compare_to: exp_030_xgb_main_river
+features:
+- price_shape
+- calendar
+- water_value
+- hydro
+- unit_static
+- wv_margin
+- scarcity
+- case_economics
+- relaxed_dp
+- tokke_vinje
+- relaxed_lp_best
+- lp_dispatch_context
+drop_features:
+- price
+- price_wkmean
+- wv_up_end
+- wv_up_start
+- wv_dn_end
+- net_wv
+model:
+  type: xgboost
+  row_share: 0.6
+  seed: 0
+  params:
+    n_estimators: 2200
+    learning_rate: 0.03
+    grow_policy: lossguide
+    max_leaves: 127
+    max_depth: 0
+    min_child_weight: 50
+    subsample: 0.8
+    colsample_bytree: 0.8

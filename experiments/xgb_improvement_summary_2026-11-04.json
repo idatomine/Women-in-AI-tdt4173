@@ -1,0 +1,9 @@
+{
+  "name": "exp_040_xgb_dispatch_capacity",
+  "baseline_xgb_cv": 0.9909838805252279,
+  "cv": 0.9927246493250064,
+  "holdout_2018": 0.9895554084849786,
+  "submission": "/Users/ingridko/Projects/sintef_project/submissions/exp_040_xgb_dispatch_capacity.csv",
+  "sha256": "1b2d18b8b5cdd9fa0081840db1c8dfeb33521048736b4f3dbd898c7c0ec7a0a5",
+  "gain": 0.0017407687997784693
+}

@@ -35,6 +35,9 @@ Options (solve_all / solve_case keyword arguments):
   with "yaml") at the curve's average cost, y / x at its last point (≈ 1.76 per m³/s·h).
   Without it, moving water down these rivers is free, so the LP shifts it arbitrarily
   (e.g. Langesae into Foersvatn in the last hours).
+- terminal_efficiency: "full" (default) converts terminal water to energy at full-load
+  average efficiency; "best" uses the first, most efficient production segment.
+  This changes the terminal objective only, leaving in-horizon production unchanged.
 - head_iterations: re-solve with the head at each reservoir's mean level in the previous
   solution (SHOP's successive linearisation, in its simplest form).
 - integer_units (needs commitment): after the LP, solve the same problem as a MILP with
@@ -332,17 +335,19 @@ def solve_case(net: Network, prices: np.ndarray, inflow: np.ndarray, start_volum
                wv_from: dict[str, str] | None = None, commitment: bool = False,
                production_curves: bool = False, flow_costs: str = "penalty",
                head_iterations: int = 0, integer_units: bool = False,
-               milp_time_limit: float = 10.0) -> dict[str, np.ndarray] | None:
+               milp_time_limit: float = 10.0, terminal_efficiency: str = "full") -> dict[str, np.ndarray] | None:
     """Solve one case. prices (hour,), inflow and min_volume (hour, reservoir) in m³/s and
     Mm³, start_volume and end_water_value (reservoir,), required_flow (hour, MIN_FLOW
     column) in m³/s or None for no min-flow constraints. Options: see the module
     docstring. Returns per-plant arrays of shape (hour, plant)."""
+    if terminal_efficiency not in ("full", "best"):
+        raise ValueError("terminal_efficiency must be full or best")
     levels = np.array([np.interp(v, *curve) for v, curve in zip(start_volume, net.level_curves)])
     result = None
     for _ in range(head_iterations + 1):
         result = _solve_once(net, levels, prices, inflow, start_volume, end_water_value, min_volume,
                              required_flow, basis, wv_from, commitment, production_curves, flow_costs,
-                             integer_units, milp_time_limit)
+                             integer_units, milp_time_limit, terminal_efficiency)
         if result is None:
             return None
         mean_volume = result["_volumes"].mean(axis=0)  # kept in the result for solve_all(volumes=True)
@@ -352,7 +357,7 @@ def solve_case(net: Network, prices: np.ndarray, inflow: np.ndarray, start_volum
 
 def _solve_once(net, levels, prices, inflow, start_volume, end_water_value, min_volume,
                 required_flow, basis, wv_from, commitment, production_curves, flow_costs,
-                integer_units=False, milp_time_limit=10.0):
+                integer_units=False, milp_time_limit=10.0, terminal_efficiency="full"):
     n_res, n_edges, n_plants = len(net.reservoirs), len(net.edges), len(net.plants)
     heads = np.array([max(levels[net.plant_source(p)] - net.plant_data[p].outlet, 1.0) for p in range(n_plants)])
     pieces = [_production_function(net.plant_data[p], heads[p], production_curves, net.segments) for p in range(n_plants)]
@@ -374,7 +379,8 @@ def _solve_once(net, levels, prices, inflow, start_volume, end_water_value, min_
         cost = np.array([{"river": RELEASE_PENALTY, "overflow": OVERFLOW_PENALTY}.get(e.kind, 0.0) for e in net.edges])
     flow_cost = np.tile(cost, (HOURS, 1)) - prices[:, None] * k[None, :]  # income from production
     volume_cost = np.zeros((HOURS, n_res))
-    volume_cost[-1] = -_end_values(net, k_avg, end_water_value, basis, wv_from)  # EUR per Mm³ left at the end
+    terminal_k = k_avg if terminal_efficiency == "full" else np.array([s[0] for s, w in pieces])
+    volume_cost[-1] = -_end_values(net, terminal_k, end_water_value, basis, wv_from)  # EUR per Mm³ left at the end
     vol_upper = np.maximum(net.max_vol, start_volume)
     vol_lower = np.minimum(min_volume, start_volume)  # (hour, reservoir); feasible by construction
 

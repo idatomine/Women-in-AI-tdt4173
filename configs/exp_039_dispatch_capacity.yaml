@@ -1,0 +1,35 @@
+name: exp_039_dispatch_capacity
+change: Dispatch context with more training rows and boosting iterations
+compare_to: exp_029_main_river
+features:
+- price_shape
+- calendar
+- water_value
+- hydro
+- unit_static
+- wv_margin
+- scarcity
+- case_economics
+- relaxed_dp
+- tokke_vinje
+- relaxed_lp_best
+- lp_dispatch_context
+drop_features:
+- price
+- price_wkmean
+- wv_up_end
+- wv_up_start
+- wv_dn_end
+- net_wv
+model:
+  type: lightgbm
+  row_share: 0.6
+  seed: 0
+  params:
+    n_estimators: 2200
+    learning_rate: 0.03
+    num_leaves: 127
+    min_child_samples: 200
+    subsample: 0.8
+    subsample_freq: 1
+    colsample_bytree: 0.8

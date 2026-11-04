@@ -1,6 +1,6 @@
 \section{Results}\label{sec:8}
 
-Table~\ref{tab:8.1} collects all our main results in one place: the predictors without learning, how the score developed as we added features and improved the LP, the other predictor types on the final features, and the two final models. The mean is over the four validation folds (2019--2022). The locked 2018 holdout was scored only for the final models, and only the submitted models have a public leaderboard score. Table~\ref{tab:8.2} gives the per-fold scores of the final models.
+Table~\ref{tab:8.1} collects our main results in one place: the predictors without learning, how the score developed as we added features and improved the LP, the other predictor types on the final features, and the two final models. The mean is over the four validation years (2019--2022). The locked 2018 holdout was scored only for the final models, and only submitted models have a public leaderboard score. Table~\ref{tab:8.2} gives the scores of the final models per validation year.
 
 \begin{table}[H]
   \centering\small
@@ -16,26 +16,14 @@ Table~\ref{tab:8.1} collects all our main results in one place: the predictors w
   \adjustbox{max width=\linewidth}{\input{tables/tab_8_2}}
 \end{table}
 
-\begin{disposition}
-What to say:
+\textbf{Both the optimisation and the learning contribute.} The economic rule alone reaches 0.870 and the LP alone 0.957. The final models reach 0.991, so learning on top of the LP removes about four fifths of the LP's remaining error. The other direction holds too: without the LP features, the best LightGBM model reached 0.979 (exp 009).
 
-\begin{itemize}
-\tightlist
-\item
-  Both models clear the highest virtual team (0.99040) on the public leaderboard by about 0.004.
-\item
-  Compared with the predictors without learning (Section~\ref{sec:5.compare}), the final models raise the AUC from 0.870 (economic rule) and 0.957 (LP alone) to 0.991, so both the physics and the learning contribute.
-\item
-  Of the development steps, the two largest gains came from adding information about how the plants depend on each other: the Tokke--Vinje coupling (+0.013) and the LP with its routing fix (+0.004 and +0.005). The public leaderboard rose with the validation score at every submitted step (0.99042 → 0.99414), so our validation reflected the test period.
-\item
-  The 2018 holdout (0.9877 / 0.9876) lies within the range of the validation folds (0.9868--0.9941), so we see no sign that our choices overfitted the four folds.
-\item
-  The public leaderboard score is higher than our validation mean. Possible explanation: 2023--2024 may be easier than our hardest validation year, 2020, with its extremely low prices.
-\item
-  Caveat: the final grade uses the private leaderboard, which we cannot see; differences of ±0.001 between our two models are noise.
-\item
-  Reproducibility: both short notebooks run from the raw data in about 9 minutes on a laptop and reproduce our submitted files byte for byte.
-\end{itemize}
-\end{disposition}
+\textbf{The largest gains came from describing how the plants depend on each other.} Of the development steps, the Tokke--Vinje coupling (+0.013), the first LP (+0.004) and the LP's routing fix (+0.005) gave the largest gains. Changes of the model itself, such as other predictor types, tuning (Section~\ref{sec:6}) or a blend of the two final models (+0.0001), gave little or nothing.
 
-% Final text:
+\textbf{The validation reflected the test period.} The public leaderboard score rose with the validation score at every submitted step, from 0.99042 (exp 017) to 0.99414 (exp 029). The locked 2018 holdout (0.9877 and 0.9876) lies within the range of the four validation years (0.9868--0.9941), so we see no sign that our many decisions overfitted those four years.
+
+\textbf{Both final models are above the highest virtual team.} On the public leaderboard, LightGBM scores 0.99414 and XGBoost 0.99429, against 0.99040 for the highest virtual team (VT1), a margin of about 0.004. The final grade uses the private leaderboard, which we cannot see. As a check, we compared the final model with exp 017, which scored almost exactly as VT1 on the public leaderboard. The final model is better in all four validation years, by between 0.003 (2021) and 0.013 (2020), even though these years are very different. We therefore expect the margin to hold on the private part, although VT1 is a different model from ours and this cannot be guaranteed.
+
+\textbf{Why the public score is higher than our validation mean.} A possible explanation is that 2023--2024 are easier than our hardest validation year, 2020, with its extremely low prices. The two final models differ by at most 0.0002 in the validation mean, the holdout and the public score, which is within noise. We submitted both because they are equally good but built by different libraries.
+
+\textbf{Reproducibility.} Both short notebooks run from the raw data in about 9 minutes on a laptop and reproduce our submitted files exactly.

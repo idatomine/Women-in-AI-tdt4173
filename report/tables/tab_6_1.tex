@@ -1,19 +1,14 @@
-\begin{tabular}{lll}
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.16\linewidth}>{\raggedright\arraybackslash}p{0.22\linewidth}>{\raggedright\arraybackslash}p{0.25\linewidth}>{\raggedright\arraybackslash}p{0.27\linewidth}}
 \toprule
-\textbf{} & \textbf{LightGBM (notebook 1)} & \textbf{XGBoost (notebook 2)} \\
+\textbf{Setting} & \textbf{LightGBM (notebook 1)} & \textbf{XGBoost (notebook 2)} & \textbf{What it controls} \\
 \midrule
-colsample\_\allowbreak{}bytree & 0.8 & 0.8 \\
-grow\_\allowbreak{}policy & — & lossguide \\
-learning\_\allowbreak{}rate & 0.05 & 0.05 \\
-max\_\allowbreak{}depth & — & 0 \\
-max\_\allowbreak{}leaves & — & 127 \\
-min\_\allowbreak{}child\_\allowbreak{}samples & 200 & — \\
-min\_\allowbreak{}child\_\allowbreak{}weight & — & 50 \\
-n\_\allowbreak{}estimators & 800 & 800 \\
-num\_\allowbreak{}leaves & 127 & — \\
-row\_\allowbreak{}share & 0.35 & 0.35 \\
-seed & 0.0 & 0 \\
-subsample & 0.8 & 0.8 \\
-subsample\_\allowbreak{}freq & 1.0 & — \\
+Number of trees & n\_\allowbreak{}estimators = 800 & n\_\allowbreak{}estimators = 800 & How many correction steps the model takes \\
+Learning rate & learning\_\allowbreak{}rate = 0.05 & learning\_\allowbreak{}rate = 0.05 & How much each tree is allowed to change the prediction \\
+Tree size & num\_\allowbreak{}leaves = 127 & max\_\allowbreak{}leaves = 127 (leaf-wise, no depth limit) & How detailed each tree can be \\
+Minimum leaf size & min\_\allowbreak{}child\_\allowbreak{}samples = 200 & min\_\allowbreak{}child\_\allowbreak{}weight = 50 (≈ 200 rows) & How many rows a leaf must contain \\
+Rows per tree & subsample = 0.8 & subsample = 0.8 & Share of rows each tree is trained on \\
+Features per tree & colsample\_\allowbreak{}bytree = 0.8 & colsample\_\allowbreak{}bytree = 0.8 & Share of features each tree may use \\
+Training rows & 35\% of rows & 35\% of rows & Random sample of the training years used per model \\
+Random seed & 0 & 0 & Makes the results reproducible \\
 \bottomrule
 \end{tabular}

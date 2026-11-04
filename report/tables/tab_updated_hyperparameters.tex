@@ -1,0 +1,16 @@
+\begin{tabular}{lll}
+\toprule
+Setting & LightGBM (039) & XGBoost (040) \\
+\midrule
+Features & Same 56 input-only features & Same 56 input-only features \\
+Training row share & 60\% & 60\% \\
+Trees & 2200 & 2200 \\
+Learning rate & 0.03 & 0.03 \\
+Leaves & 127 & 127 \\
+Tree growth & leaf-wise & lossguide, max\_depth=0 \\
+Minimum leaf setting & min\_child\_samples=200 & min\_child\_weight=50 \\
+Rows per tree & 0.8 & 0.8 \\
+Features per tree & 0.8 & 0.8 \\
+Seed & 0 & 0 \\
+\bottomrule
+\end{tabular}

@@ -1,5 +1,19 @@
 # Briefing: SINTEF unit-commitment prediction (TDT4173)
 
+**Status 2026-11-04 (read this first): new final picks are exp 038 (LightGBM, the core
+model) and an XGBoost twin of 038 that still has to be run (exp 041).** Details, reasons
+and the remaining steps are in §7, item 6. In short:
+- A new improvement round (exps 037–040) raised the validation mean from 0.9912 to about
+  0.993. The gain comes from the features in exp 038, not from the larger fit in 039/040.
+- exp 039 (LightGBM) scored **0.99559** and exp 040 (XGBoost) **0.99566** on the public
+  leaderboard, both well above VT1 (0.99040).
+- We keep to our own acceptance rule: 039's larger fit gave +0.0002 over 038 (below the
+  seed noise of 0.0008), so the final LightGBM model is 038, and XGBoost must use 038's
+  settings. 039/040 stay in the journal as tested, not selected.
+- **The short notebooks currently point to 039/040 and have not been run end to end.**
+  They must be repointed to 038/041, filled in (team header, public scores) and checked
+  for byte-identical output before the deadline.
+
 Handoff document for whoever (human or Claude session) trains and tunes the model. It
 summarises what is **verified in the data** (✅), what comes from **research** (📚, see
 `research/0*.md` for sources), and what is still a **hypothesis** (❓).
@@ -684,6 +698,78 @@ joint-fill idea in §9 is tried. **Next phase, in this order:**
 5. **Report:** EDA; ≥ 2 predictor types (LightGBM + XGBoost); feature engineering (the
    journal's per-step score table, with the Kjela/Hyljelihyl bug as a case study); model
    interpretation (SHAP / feature importance).
+
+6. **Improvement round and new final picks (2026-11-04).** The model was reopened to get a
+   better score. Results (mean over folds A–D; per-fold numbers in the journal and in
+   `docs/IMPROVEMENT_2026-11-04.md` / `docs/PAIRED_MODELS_2026-11-04.md`):
+
+   | Exp | Change | Mean A–D | vs 029 | 2018 | Public LB |
+   |---|---|---|---|---|---|
+   | 037 | End-of-week water valued with the most efficient production segment instead of the full-load average (`relaxed_lp_best`, features `lpb_*`) | 0.9919 | +0.0007 (fails alone) | — | — |
+   | 038 | 037 + `lp_dispatch_context`: 17 features summarising the LP over the week (6 h / 24 h rolling means, weekly mean/min/max of LP unit-on and margin, Tokke's and Vinje's LP production and margin, a start-cost regret on the LP margin). 56 features in total | 0.9929 | +0.0016, all 4 years up | not yet scored | not yet submitted |
+   | 039 | 038 with 60% of rows and 2200 trees at learning rate 0.03 (was 35%, 800, 0.05) | 0.9930 | +0.0018 | 0.9896 | 0.99559 |
+   | 040 | XGBoost twin of **039** (same 56 features and settings) | 0.9927 | +0.0017 vs 030 | 0.9896 | 0.99566 |
+
+   **Decision: the final LightGBM model is 038, not 039.** Why:
+   - 039 differs from 038 only by the larger fit, which gave +0.0002. That is below the
+     seed noise (0.0008) and fails the acceptance rule against 038. The report's
+     hyperparameter section (§6 of the report) concludes, from exps 016 and 028a–e, that
+     more rows and trees do not help; picking 039 would contradict it without evidence.
+   - 038 keeps the report's hyperparameter table unchanged and the notebooks faster.
+   - LightGBM stays the core model: all feature work was done with it. XGBoost is the
+     second pick, as before, and must be a twin of the core model.
+
+   **Protocol notes for the report (state them openly):**
+   - 037 failed the acceptance rule on its own (+0.0007) but was kept and combined with
+     the context features in 038. The context features were never tested without 037.
+   - The 2018 holdout was scored for 039 and 040 after selection. It still has to be
+     scored once for 038 and 041; do not use it to choose between them.
+   - The new LP features are summaries over the hours of the LP's own outputs. Rolling
+     means of the simple price margin (exp 005) did not help, these do. Likely reason:
+     each training row sees one hour, and the LP's outputs are a much better source to
+     summarise. The report's lesson "rearranged information did not help" must be
+     softened accordingly.
+   - `docs/PAIRED_MODELS_2026-11-04.md` says that 039 "adds a small gain on the richer
+     features". Don't put that in the report: +0.0002 is noise.
+
+   **Still to do, in this order:**
+   1. **Run exp 041:** XGBoost on 038's features with 038's settings (35% rows, 800 trees,
+      learning rate 0.05, `max_leaves` 127, `min_child_weight` 50, as in exp 030).
+      Validate on A–D.
+   2. **Kaggle:** submit 038 and 041 (max 2 per day). Both must clear VT1 clearly.
+   3. **2018 holdout:** score 038 and 041 once each. Don't score it again.
+   4. **Notebooks:** `tools/build_notebooks.py` points to 039/040. Change `NOTEBOOKS` to
+      the 038 and 041 configs. Add their public scores to `PUBLIC_LB` (it only has
+      029/030, so the header says "not yet submitted"). Fill in `TEAM_HEADER` (group
+      number, team name, names and student IDs; it still says TODO). Rebuild.
+   5. **Reproducibility:** the new notebooks were only checked on three cases. Run both in
+      a fresh venv from `requirements.txt`, in a folder with only the notebooks and the raw
+      data, and check that they reproduce `submissions/exp_038_*.csv` / `exp_041_*.csv`
+      byte for byte, as was done for 029/030 (item 4). Note the runtime and peak memory:
+      the notebooks now solve a second LP (`relaxed_lp_best`). The limit is 12 h on a
+      normal PC.
+   6. **Select 038 and 041 on Kaggle** as the two final submissions.
+   7. **Report:** `Report.ipynb` still uses `exp_029_main_river` / `exp_030_xgb_main_river`
+      for the final-model figures and tables (about ten places). Repoint those to 038/041,
+      keep 029/030 in the development history, re-run it and re-export. Tables and figures
+      that change: report Tables 4.groups, 4.tried, 5.1, 7.2, 8.1, 8.2, A.1, B.1 (and
+      optionally 6.2 with a row for 039) and Figures 4.1 and 7.1–7.6. EDA (Section 2),
+      validation (Table 3.1) and Table 6.1 stay as they are. The text changes:
+      - Section 4: a new stage for 037/038.
+      - Section 5: one sentence on the new end-of-week valuation. The RF/logistic/MLP
+        comparison stays on 029's features, and the report must say so.
+      - Section 6: one sentence that 039 confirmed the old tuning result on the final
+        features.
+      - Section 7: the new numbers.
+      - Section 8: the new final numbers, VT1 margin and holdout.
+      - Section 9: soften the lesson about rearranged information, and update the tuning
+        limitation.
+      - Introduction: the headline numbers.
+
+   **If there is not time for 041 and the new notebook check:** fall back to 029/030
+   (`tools/build_notebooks.py --legacy`). These notebooks are verified and both clear VT1.
+   Choosing 039/040 instead is possible, but the report must then say openly that the
+   larger fit failed the acceptance rule against 038 and was used anyway.
 
 Deadline **2026-11-08 22:00**.
 

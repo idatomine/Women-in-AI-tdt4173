@@ -130,14 +130,17 @@ def fit(model_cfg: dict, X: np.ndarray, Y: np.ndarray, case_idx: np.ndarray, nam
             models.append(_train(model_cfg, X_unit[keep], y_unit[keep], names, categorical=[]))
         return models
 
-    X_train = X[case_idx].reshape(-1, n_features)
     y_train = Y[case_idx].ravel()
     keep = rng.random(len(y_train)) < model_cfg["row_share"]
+    rows_per_case = X.shape[1] * X.shape[2]
+    selected = np.flatnonzero(keep)
+    absolute = case_idx[selected // rows_per_case] * rows_per_case + selected % rows_per_case
+    X_train = X.reshape(-1, n_features)[absolute]
     categorical = ["unit"] if "unit" in names else []
     weights = case_weights(model_cfg)
     if weights is not None:
         weights = np.broadcast_to(weights[case_idx, None, None], Y[case_idx].shape).ravel()[keep]
-    return _train(model_cfg, X_train[keep], y_train[keep], names, categorical, weights)
+    return _train(model_cfg, X_train, y_train[keep], names, categorical, weights)
 
 
 def predict(model, X: np.ndarray, case_idx: np.ndarray) -> np.ndarray:

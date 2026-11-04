@@ -11,6 +11,7 @@ is rebuilt automatically when the group's module or src/data.py changes.
 
 To add a group: create src/features/<name>.py with a `build` function, then list <name>
 under `features:` in an experiment config.
+Set `CACHE = False` in a cheap derived group to avoid a redundant disk cache.
 """
 
 import hashlib
@@ -37,12 +38,17 @@ def load_group(group: str, data: Data) -> tuple[np.ndarray, list[str]]:
     if array_path.exists() and names_path.exists():
         return np.load(array_path, mmap_mode="r"), json.loads(names_path.read_text())
 
-    print(f"  building feature group '{group}' (cached afterwards)")
-    features = importlib.import_module(f"src.features.{group}").build(data)
+    module = importlib.import_module(f"src.features.{group}")
+    suffix = " (cached afterwards)" if getattr(module, "CACHE", True) else ""
+    print(f"  building feature group '{group}'{suffix}")
+    features = module.build(data)
     shape = (data.n_cases, len(data.units), HOURS)
     array = np.empty(shape + (len(features),), dtype=np.float32)
     for j, (name, values) in enumerate(features.items()):
         array[..., j] = np.broadcast_to(values, shape)
+
+    if not getattr(module, "CACHE", True):
+        return array, list(features)
 
     CACHE_DIR.mkdir(exist_ok=True)
     for old in CACHE_DIR.glob(f"{group}__*"):  # outdated versions of this group
@@ -57,12 +63,13 @@ def build_matrix(groups: list[str], data: Data, drop: list[str] = ()) -> tuple[n
 
     `drop` removes single features by name (the config's `drop_features`).
     """
-    arrays, names, dropped = [], [], set()
+    metadata = []
+    names, dropped = [], set()
     for group in groups:
         array, group_names = load_group(group, data)
         keep = [j for j, name in enumerate(group_names) if name not in drop]
         dropped |= set(group_names) - {group_names[j] for j in keep}
-        arrays.append(array[..., keep])
+        metadata.append((array, keep))
         names += [group_names[j] for j in keep]
     unknown = set(drop) - dropped
     if unknown:
@@ -70,4 +77,10 @@ def build_matrix(groups: list[str], data: Data, drop: list[str] = ()) -> tuple[n
     duplicates = {n for n in names if names.count(n) > 1}
     if duplicates:
         raise ValueError(f"feature names used by more than one group: {sorted(duplicates)}")
-    return np.concatenate(arrays, axis=-1), names
+    X = np.empty((data.n_cases, len(data.units), HOURS, len(names)), dtype=np.float32)
+    offset = 0
+    for array, keep in metadata:
+        for j in keep:
+            X[..., offset] = array[..., j]
+            offset += 1
+    return X, names

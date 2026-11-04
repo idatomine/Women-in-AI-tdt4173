@@ -1,26 +1,30 @@
 \section{Discussion and lessons learned}\label{sec:9}
 
-\begin{disposition}
-We will close with the lessons we would pass on, each with its evidence:
+\subsection{Lessons learned}\label{sec:9.lessons}
+
+\textbf{Domain knowledge mattered more than the choice of model.} Features based on the physics and economics of the watercourse raised the AUC from 0.959 to 0.991. Switching between LightGBM and XGBoost, tuning, one model per unit and blending each changed the score by less than 0.002. We would therefore spend the first weeks of a similar project on understanding the system, not on comparing models.
+
+\textbf{To imitate an optimiser, use a simplified copy of the optimiser.} The labels are the solution of an optimisation problem, so the most useful feature was the solution of a similar, simpler problem. The relaxed LP turned the learning problem into a correction problem: instead of learning SHOP's decisions from scratch, the model only has to learn where our LP differs from SHOP.
+
+\textbf{New information helped, rearranged information did not.} Features that only expressed existing inputs in a new way, such as margins in neighbouring hours, rolling means or the length of profitable blocks, gave nothing beyond noise, because the trees can already combine the inputs they have. The large gains all came from information the model did not have before: how the plants share water, reservoir limits, minimum flows and start costs.
+
+\textbf{Check the physics before tuning the model.} One wrong river in the LP's routing, where water from Hyljelihyl was valued along the wrong path, cost more than all our tuning experiments together could recover. Fixing it gave +0.005, while no tuning change gave any gain at all.
+
+\textbf{A strict validation protocol kept us honest.} Validating on whole years with a buffer, requiring a gain larger than the seed noise in most years, and keeping 2018 locked until the end meant that most of our ideas were rejected. That was correct: the public leaderboard rose at every step we submitted, and the holdout confirmed the final models.
+
+\subsection{Limitations}\label{sec:9.limitations}
 
 \begin{itemize}
-\tightlist
-\item
-  \textbf{Domain knowledge beat model choice.} Physics-based features added about +0.03 AUC (0.959 → 0.991), while switching between LightGBM and XGBoost, tuning, per-unit models and blends each changed the score by less than 0.002.
-\item
-  \textbf{Imitating an optimiser is best done with (a simplified copy of) the optimiser.} The relaxed LP turned a learning problem into a correction problem.
-\item
-  \textbf{New information beats re-expressed information.} Features that only rearranged existing inputs never helped; features that added physics (reservoir limits, coupling, minimum flows) always did.
-\item
-  \textbf{Check the physics before tuning.} One wrong river in the routing cost more than all tuning could recover (the Hyljelihyl bug).
-\item
-  \textbf{A strict validation protocol kept us honest.} Year-based folds with an embargo, a seed-noise threshold and a locked holdout year meant that most of our ``ideas'' were correctly rejected.
+  \item \emph{The labels set a limit.} Neighbouring cases disagree on 12\% of their shared hours (Section~\ref{sec:2.2}), and cases from slow optimiser runs may have less optimal labels (Section~\ref{sec:7.3}). Part of the remaining error can therefore not be removed by any model.
+  \item \emph{The starting state is missing.} SHOP probably knew which units were running when each case began, but the data does not include this, which makes the first hours of each case the hardest.
+  \item \emph{The LP is a simplification.} It assumes a fixed head and linearised production curves, and its units can be partly on. The MILP with whole on/off decisions is closer to SHOP in principle, but within our time limit its decisions matched SHOP's worse than the LP's (Section~\ref{sec:5.milp}).
+  \item \emph{Untuned alternatives.} The random forest, logistic regression and neural network were not tuned, and the tuning of the boosted trees was done before the final LP fix (Section~\ref{sec:6}). We expect little from re-tuning, but have not tested it.
 \end{itemize}
 
-\textbf{Limitations.} Some labels may be suboptimal (slow optimiser runs); the LP is linear (fixed head, linearised efficiency) and has no true on/off decisions; overlapping cases disagree on 12\% of hours, which bounds what any model can reach; and we did not try neural networks.
+\subsection{Future work}\label{sec:9.future}
 
-\textbf{Future work.} A small neural network (1D CNN) over the LP's hourly outputs as a second, more different model; a better start-state estimate for the first hours of each case; and a closer copy of SHOP (head-dependent production, true unit commitment with a time limit).
-\end{disposition}
-
-% Final text:
-
+\begin{itemize}
+  \item \emph{A closer copy of SHOP:} production that depends on the reservoir level, and true on/off decisions solved with a longer time limit.
+  \item \emph{A model that sees the whole week at once,} for example a small 1D convolutional network over the LP's hourly outputs. It would use the order of the hours more directly than trees, and would be a more different second model to combine with the boosted trees.
+  \item \emph{The starting state of each case,} if SINTEF could provide it, to improve the first hours.
+\end{itemize}

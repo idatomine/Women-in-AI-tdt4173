@@ -154,13 +154,25 @@ On macOS with conda, LightGBM also needs OpenMP: `conda install -c conda-forge l
 
 ## Final submissions and short notebooks
 
-The two selected Kaggle predictions are exp 029 (LightGBM) and exp 030 (XGBoost), both on
-the same features. `Short_notebook_1.ipynb` and `Short_notebook_2.ipynb` reproduce them from
-the raw data with all code inline, as the course requires. **Don't edit the notebooks by
-hand:** they are generated from `src/` and the two configs by
+The improved pair is exp 039 (LightGBM) and exp 040 (XGBoost), with the same 56 features
+and matched training settings. `Short_notebook_1.ipynb` and `Short_notebook_2.ipynb`
+reproduce them from the raw data with all code inline, as the course requires. The new
+pair has no verified Kaggle score yet; the previously submitted pair was exp 029/030.
+**Don't edit the notebooks by hand:** they are generated from `src/` and the two configs by
 
 ```bash
 .venv/bin/python tools/build_notebooks.py
 ```
 
-so rerun it after any change to the code they use.
+so rerun it after any change to the code they use. Use `--legacy` to rebuild the
+previous 029/030 notebook pair. After validation, export the old/new report comparison
+with `.venv/bin/python tools/build_paired_results.py`; see
+[the matched-model guide](docs/PAIRED_MODELS_2026-11-04.md).
+
+## Modelling continuation — 4 November 2026
+
+New local candidate **exp_039_dispatch_capacity** reaches mean year-held-out AUC **0.9930336**, up **0.0017933** from exp 029. It combines efficient-segment terminal-water valuation with temporal/cascade LP context and a larger LightGBM fit. The requested +0.002 gain was not reached; no new Kaggle score is verified. See [the experiment notes](docs/IMPROVEMENT_2026-11-04.md) for per-year scores, checks and reproduction commands.
+
+Cheap derived feature groups can set `CACHE = False` to avoid redundant disk caches. Feature assembly and row sampling now use fewer memory copies; regression tests are in `tests/`. The existing short notebooks were regenerated from source and retain the original Kaggle model selections.
+
+The matched XGBoost counterpart, **exp_040_xgb_dispatch_capacity**, reaches CV **0.9927246** (+0.0017408 versus exp 030), with every validation year improving. Reserved 2018 AUC is **0.9895554**. The improved LightGBM/XGBoost pair uses the same features and matched settings; [the paired-model guide](docs/PAIRED_MODELS_2026-11-04.md) includes report-ready comparisons.

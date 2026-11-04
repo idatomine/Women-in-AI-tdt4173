@@ -9,10 +9,13 @@ into notebook cells, so the notebooks always match the code that made the submis
 - the feature cache and the experiment logging are left out.
 
 From the repo root:
-    .venv/bin/python tools/build_notebooks.py
+    .venv/bin/python tools/build_notebooks.py           # improved 039 / 040 pair
+    .venv/bin/python tools/build_notebooks.py --legacy  # previous 029 / 030 pair
 """
 
+import argparse
 import ast
+import csv
 from pathlib import Path
 
 import nbformat
@@ -20,9 +23,13 @@ import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
 
-NOTEBOOKS = {
+LEGACY_NOTEBOOKS = {
     "Short_notebook_1.ipynb": "configs/exp_029_main_river.yaml",
     "Short_notebook_2.ipynb": "configs/exp_030_xgb_main_river.yaml",
+}
+NOTEBOOKS = {
+    "Short_notebook_1.ipynb": "configs/exp_039_dispatch_capacity.yaml",
+    "Short_notebook_2.ipynb": "configs/exp_040_xgb_dispatch_capacity.yaml",
 }
 TEAM_HEADER = """**Kaggle team:** TODO "[<group number>] <team name>"
 
@@ -31,7 +38,14 @@ TEAM_HEADER = """**Kaggle team:** TODO "[<group number>] <team name>"
 | TODO | TODO |
 """
 PUBLIC_LB = {"exp_029_main_river": "0.99414", "exp_030_xgb_main_river": "0.99429"}
-CV = {"exp_029_main_river": "0.9912", "exp_030_xgb_main_river": "0.9910"}
+def cv_text(name: str) -> str:
+    """Use the latest complete measured result, including after a holdout run."""
+    value = "not yet measured"
+    with (ROOT / "experiments/results.csv").open() as stream:
+        for row in csv.DictReader(stream):
+            if row["name"] == name and all(row.get(f) for f in ("A", "B", "C", "D")):
+                value = f"{sum(float(row[f]) for f in ('A', 'B', 'C', 'D')) / 4:.7f}"
+    return value
 
 
 def module_cells(path: Path, title: str, rename_build: str | None = None,
@@ -63,8 +77,8 @@ def build_notebook(config_path: str) -> nbformat.NotebookNode:
     cells = [
         nbformat.v4.new_markdown_cell(
             f"# TDT4173 — SINTEF unit commitment: `{name}` ({model_name})\n\n{TEAM_HEADER}\n"
-            f"Reproduces our selected Kaggle prediction **{name}** (public LB {PUBLIC_LB[name]}, "
-            f"local CV {CV[name]} as the mean AUC over the leave-one-year-out folds 2019–2022).\n\n"
+            f"Reproduces prediction **{name}** (public LB {PUBLIC_LB.get(name, 'not yet submitted')}, "
+            f"local CV {cv_text(name)} as the mean AUC over the leave-one-year-out folds 2019–2022).\n\n"
             "Pipeline: load the raw data → physics features (water-value margins, scarcity, a "
             "per-plant dynamic program, Tokke–Vinje coupling) → **a relaxed LP of the whole "
             "watercourse per case** (our approximation of SINTEF's SHOP optimiser) → one pooled "
@@ -73,7 +87,7 @@ def build_notebook(config_path: str) -> nbformat.NotebookNode:
             "**How to run:** place the competition files next to this notebook (`data/kernel/`, "
             "`data/extended/`, `prediction_mapping.csv`, `sample_submission.csv`; or change "
             "`DATA_DIR` below), install `requirements.txt` (Python 3.12), then run all cells. "
-            "CPU only, at most 4 threads, about 10–15 minutes and < 6 GB RAM. Training is "
+            "CPU only, at most 4 threads; runtime and memory depend on the hardware. Training is "
             "deterministic: two runs give identical files. How the hyperparameters were chosen is "
             "described in the report."),
         nbformat.v4.new_code_cell(
@@ -106,15 +120,18 @@ def build_notebook(config_path: str) -> nbformat.NotebookNode:
             "        _groups[group] = array, list(features)\n"
             "    return _groups[group]"),
     ]
+    lp_included = False
     for group in cfg["features"]:
-        if group == "relaxed_lp_shop2":
+        if group in ("relaxed_lp_shop2", "relaxed_lp_best") and not lp_included:
+            lp_included = True
             cells += [nbformat.v4.new_markdown_cell("## 3. Relaxed LP of the watercourse")]
             cells += module_cells(ROOT / "src/features/relaxed_lp.py", "LP model (relaxed_lp)",
                                   rename_build="build_relaxed_lp",
                                   replace={"WORKERS = None  # LP worker processes; None = all cores but one, 1 = in-process (notebooks)":
                                            "WORKERS = 1  # in-process: worker processes can't import functions defined in a notebook"})
         cells += module_cells(ROOT / f"src/features/{group}.py", f"Feature group `{group}`",
-                              rename_build=f"build_{group}")
+                              rename_build=f"build_{group}",
+                              replace={"workers=6": "workers=1"} if group == "relaxed_lp_best" else None)
 
     cells += [
         nbformat.v4.new_markdown_cell("## 4. Feature matrix"),
@@ -123,21 +140,28 @@ def build_notebook(config_path: str) -> nbformat.NotebookNode:
             f"DROP_FEATURES = {cfg.get('drop_features', [])!r}  # raw EUR levels: regime-dependent (2022 vs 2023–24)\n\n\n"
             "def build_matrix(data):\n"
             "    \"\"\"All groups side by side, shape (case, unit, hour, feature), float32.\"\"\"\n"
-            "    arrays, names = [], []\n"
+            "    metadata, names = [], []\n"
             "    for group in FEATURE_GROUPS:\n"
             "        array, group_names = load_group(group, data)\n"
             "        keep = [j for j, name in enumerate(group_names) if name not in DROP_FEATURES]\n"
-            "        arrays.append(array[..., keep])\n"
+            "        metadata.append((array, keep))\n"
             "        names += [group_names[j] for j in keep]\n"
-            "    return np.concatenate(arrays, axis=-1), names\n\n\n"
+            "    X = np.empty((data.n_cases, len(data.units), HOURS, len(names)), dtype=np.float32)\n"
+            "    column = 0\n"
+            "    for array, keep in metadata:\n"
+            "        for j in keep:\n"
+            "            X[..., column] = array[..., j]\n"
+            "            column += 1\n"
+            "    return X, names\n\n\n"
             "data = load_data()\n"
             "X, names = build_matrix(data)\n"
+            "_groups.clear()  # release cached groups before model training\n"
             "print(X.shape, len(names), \"features\")"),
         nbformat.v4.new_markdown_cell("## 5. Model"),
         *module_cells(ROOT / "src/models.py", "Model wrapper"),
         nbformat.v4.new_markdown_cell(
             "## 6. Train on all 2015–2022 cases and write the submission\n\n"
-            "Hyperparameters were chosen on the leave-one-year-out folds (see the report)."),
+            "Settings below reproduce the selected experiment; its validation mean is recorded in the introduction."),
         nbformat.v4.new_code_cell(
             f"MODEL = {model_cfg!r}\n\n"
             "train_idx = np.arange(data.n_train)\n"
@@ -161,7 +185,10 @@ def build_notebook(config_path: str) -> nbformat.NotebookNode:
 
 
 def main() -> None:
-    for filename, config in NOTEBOOKS.items():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--legacy", action="store_true", help="rebuild the original exp 029/030 notebooks")
+    args = parser.parse_args()
+    for filename, config in (LEGACY_NOTEBOOKS if args.legacy else NOTEBOOKS).items():
         nbformat.write(build_notebook(config), ROOT / filename)
         print(f"written: {filename} (from {config})")
 
