@@ -47,8 +47,8 @@
 028d\_\allowbreak{}min\_\allowbreak{}leaf\_\allowbreak{}1000 & exp 024 with min\_\allowbreak{}child\_\allowbreak{}samples 1000 (was 200): coarser leaves, more regularised & 0.9862 &  & Drop \\
 028e\_\allowbreak{}colsample\_\allowbreak{}05 & exp 024 with colsample\_\allowbreak{}bytree 0.5 (was 0.8): more feature sampling per tree & 0.9861 &  & Drop \\
 028f\_\allowbreak{}per\_\allowbreak{}unit & exp 024 with one LightGBM model per unit (was pooled), now with the full LP feature set & 0.9851 &  & Drop \\
-029\_\allowbreak{}main\_\allowbreak{}river & exp 024 with main\_\allowbreak{}river in the LP (Hyljelihyl valued along r\_\allowbreak{}Hyljelihyl, not the bypass): relaxed\_\allowbreak{}lp\_\allowbreak{}shop2 instead of relaxed\_\allowbreak{}lp\_\allowbreak{}shop & 0.9912 & 0.99414 & Keep: final model 1 \\
-030\_\allowbreak{}xgb\_\allowbreak{}main\_\allowbreak{}river & exp 029 with XGBoost instead of LightGBM (same features, settings matched as in exp 012): candidate for final pick \#2 & 0.9910 & 0.99429 & Candidate for final pick \#2 (not a feature change, so the acceptance rule doesn't apply) \\
+029\_\allowbreak{}main\_\allowbreak{}river & exp 024 with main\_\allowbreak{}river in the LP (Hyljelihyl valued along r\_\allowbreak{}Hyljelihyl, not the bypass): relaxed\_\allowbreak{}lp\_\allowbreak{}shop2 instead of relaxed\_\allowbreak{}lp\_\allowbreak{}shop & 0.9912 & 0.99414 & Keep; final pick until replaced by 038/041 \\
+030\_\allowbreak{}xgb\_\allowbreak{}main\_\allowbreak{}river & exp 029 with XGBoost instead of LightGBM (same features, settings matched as in exp 012): candidate for final pick \#2 & 0.9910 & 0.99429 & Keep; final pick until replaced by 038/041 \\
 031a\_\allowbreak{}rank\_\allowbreak{}gap & exp 029 + lpx\_\allowbreak{}rank\_\allowbreak{}gap and lpx\_\allowbreak{}plant\_\allowbreak{}on (LP units-on minus the unit's rank, unclipped; plant share on) & 0.9911 &  & Drop \\
 031b\_\allowbreak{}joint\_\allowbreak{}fill & exp 029 + lpx\_\allowbreak{}joint\_\allowbreak{}fill (LP fill of the tunnel-joined lake group for Vinje and Kjela) & 0.9912 &  & Drop \\
 032\_\allowbreak{}slow\_\allowbreak{}solver\_\allowbreak{}weight & exp 029 with cases from slow SHOP runs (≥ 900 s, 6\%) down-weighted to 0.3 in training (possible label noise) & 0.9913 &  & Drop \\
@@ -56,8 +56,9 @@
 033\_\allowbreak{}random\_\allowbreak{}forest & exp 029 with Random Forest (bagged trees, no boosting) instead of LightGBM (same features) & 0.9876 &  & Predictor-type comparison (report §5) \\
 035\_\allowbreak{}mlp & exp 029 with MLP neural network (2 hidden layers, 128 and 64 units) instead of LightGBM (same features) & 0.9866 &  & Predictor-type comparison (report §5) \\
 037\_\allowbreak{}terminal\_\allowbreak{}efficiency & Terminal water valued at efficient-segment energy conversion & 0.9919 &  & Positive on all four years, but below the 0.001 acceptance threshold alone \\
-038\_\allowbreak{}dispatch\_\allowbreak{}context & Efficient terminal valuation plus LP temporal/cascade and start-cost context & 0.9929 &  & Keep \\
-039\_\allowbreak{}dispatch\_\allowbreak{}capacity & Dispatch context with more training rows and boosting iterations & 0.9930 &  & Best local candidate \\
-040\_\allowbreak{}xgb\_\allowbreak{}dispatch\_\allowbreak{}capacity & XGBoost counterpart to exp 039: identical 56 features, 60\% rows, 2200 trees at learning rate 0.03 & 0.9927 &  & Keep as the matched XGBoost counterpart to 039 \\
+038\_\allowbreak{}dispatch\_\allowbreak{}context & Efficient terminal valuation plus LP temporal/cascade and start-cost context & 0.9929 & 0.99554 & Keep: final model 1 (decided 2026-11-05) \\
+039\_\allowbreak{}dispatch\_\allowbreak{}capacity & Dispatch context with more training rows and boosting iterations & 0.9930 & 0.99559 & Not selected: below the seed noise vs 038/041 \\
+040\_\allowbreak{}xgb\_\allowbreak{}dispatch\_\allowbreak{}capacity & XGBoost counterpart to exp 039: identical 56 features, 60\% rows, 2200 trees at learning rate 0.03 & 0.9927 & 0.99566 & Not selected: below the seed noise vs 038/041 \\
+041\_\allowbreak{}xgb\_\allowbreak{}dispatch\_\allowbreak{}context & XGBoost twin of exp 038: identical 56 features, settings as exp 030 (35\% rows, 800 trees at learning rate 0.05) & 0.9926 & 0.99552 & Keep: final model 2 (XGBoost twin of 038) \\
 \bottomrule
 \end{longtable}
