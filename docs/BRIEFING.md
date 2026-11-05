@@ -706,10 +706,10 @@ joint-fill idea in §9 is tried. **Next phase, in this order:**
    | Exp | Change | Mean A–D | vs 029 | 2018 | Public LB |
    |---|---|---|---|---|---|
    | 037 | End-of-week water valued with the most efficient production segment instead of the full-load average (`relaxed_lp_best`, features `lpb_*`) | 0.9919 | +0.0007 (fails alone) | — | — |
-   | 038 | 037 + `lp_dispatch_context`: 17 features summarising the LP over the week (6 h / 24 h rolling means, weekly mean/min/max of LP unit-on and margin, Tokke's and Vinje's LP production and margin, a start-cost regret on the LP margin). 56 features in total | 0.9929 | +0.0016, all 4 years up | 0.9894 | not yet submitted |
+   | 038 | 037 + `lp_dispatch_context`: 17 features summarising the LP over the week (6 h / 24 h rolling means, weekly mean/min/max of LP unit-on and margin, Tokke's and Vinje's LP production and margin, a start-cost regret on the LP margin). 56 features in total | 0.9929 | +0.0016, all 4 years up | 0.9894 | 0.99554 |
    | 039 | 038 with 60% of rows and 2200 trees at learning rate 0.03 (was 35%, 800, 0.05) | 0.9930 | +0.0018 | 0.9896 | 0.99559 |
    | 040 | XGBoost twin of **039** (same 56 features and settings) | 0.9927 | +0.0017 vs 030 | 0.9896 | 0.99566 |
-   | 041 | XGBoost twin of **038** (same 56 features, 030's settings) | 0.9926 | +0.0017 vs 030, all 4 years up | 0.9894 | not yet submitted |
+   | 041 | XGBoost twin of **038** (same 56 features, 030's settings) | 0.9926 | +0.0017 vs 030, all 4 years up | 0.9894 | 0.99552 |
 
    **Decision: the final LightGBM model is 038, not 039.** Why:
    - 039 differs from 038 only by the larger fit, which gave +0.0002. That is below the
@@ -719,6 +719,17 @@ joint-fill idea in §9 is tried. **Next phase, in this order:**
    - 038 keeps the report's hyperparameter table unchanged and the notebooks faster.
    - LightGBM stays the core model: all feature work was done with it. XGBoost is the
      second pick, as before, and must be a twin of the core model.
+   - **Public leaderboard (2026-11-05): 038 0.99554 and 041 0.99552, slightly below 039
+     (0.99559) and 040 (0.99566).** The decision stands. The differences (0.00005 and
+     0.00014) are 6–16 times smaller than the seed noise. Picking by them would mainly
+     select the model that happened to fit the public part best, while the grade uses the
+     private part. This is the same argument the report uses against an automatic
+     hyperparameter search (report §6). Both validation (+0.0002) and public LB agree that
+     the larger fit is no better. Suggested sentence for report §8: "We also tested a
+     larger fit of the final features (exp 039 and 040: 60% of the rows and 2200 trees).
+     It scored 0.0002 higher in validation and 0.00005–0.00014 higher on the public
+     leaderboard, both well within the seed noise of 0.0008. Because it did not pass our
+     acceptance rule, we kept the simpler models 038 and 041."
 
    **Protocol notes for the report (state them openly):**
    - 037 failed the acceptance rule on its own (+0.0007) but was kept and combined with
