@@ -31,7 +31,7 @@ facts, the validation protocol, the feature backlog and the pitfalls.
 - `Short_notebook_1.ipynb` / `Short_notebook_2.ipynb`: the course deliverables,
   **generated** from `src/` by `tools/build_notebooks.py`. Never edit them by hand; rebuild
   them after changing any code they use. The final picks are **exp 038 (LightGBM, the core
-  model) and exp 041 (its XGBoost twin, still to be run)**. 039/040 were tested but not
+  model) and exp 041 (its XGBoost twin)**. 039/040 were tested but not
   selected: their larger fit gave +0.0002 over 038, below the seed noise, so it fails the
   acceptance rule (BRIEFING §7, item 6). The script currently still points to 039/040 and
   must be repointed to 038/041. `--legacy` rebuilds the verified 029/030 pair, the fallback

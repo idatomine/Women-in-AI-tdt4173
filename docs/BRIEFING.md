@@ -1,7 +1,7 @@
 # Briefing: SINTEF unit-commitment prediction (TDT4173)
 
 **Status 2026-11-04 (read this first): new final picks are exp 038 (LightGBM, the core
-model) and an XGBoost twin of 038 that still has to be run (exp 041).** Details, reasons
+model) and its XGBoost twin, exp 041 (run 2026-11-05: CV 0.9926, 2018 0.9894).** Details, reasons
 and the remaining steps are in §7, item 6. In short:
 - A new improvement round (exps 037–040) raised the validation mean from 0.9912 to about
   0.993. The gain comes from the features in exp 038, not from the larger fit in 039/040.
@@ -706,9 +706,10 @@ joint-fill idea in §9 is tried. **Next phase, in this order:**
    | Exp | Change | Mean A–D | vs 029 | 2018 | Public LB |
    |---|---|---|---|---|---|
    | 037 | End-of-week water valued with the most efficient production segment instead of the full-load average (`relaxed_lp_best`, features `lpb_*`) | 0.9919 | +0.0007 (fails alone) | — | — |
-   | 038 | 037 + `lp_dispatch_context`: 17 features summarising the LP over the week (6 h / 24 h rolling means, weekly mean/min/max of LP unit-on and margin, Tokke's and Vinje's LP production and margin, a start-cost regret on the LP margin). 56 features in total | 0.9929 | +0.0016, all 4 years up | not yet scored | not yet submitted |
+   | 038 | 037 + `lp_dispatch_context`: 17 features summarising the LP over the week (6 h / 24 h rolling means, weekly mean/min/max of LP unit-on and margin, Tokke's and Vinje's LP production and margin, a start-cost regret on the LP margin). 56 features in total | 0.9929 | +0.0016, all 4 years up | 0.9894 | not yet submitted |
    | 039 | 038 with 60% of rows and 2200 trees at learning rate 0.03 (was 35%, 800, 0.05) | 0.9930 | +0.0018 | 0.9896 | 0.99559 |
    | 040 | XGBoost twin of **039** (same 56 features and settings) | 0.9927 | +0.0017 vs 030 | 0.9896 | 0.99566 |
+   | 041 | XGBoost twin of **038** (same 56 features, 030's settings) | 0.9926 | +0.0017 vs 030, all 4 years up | 0.9894 | not yet submitted |
 
    **Decision: the final LightGBM model is 038, not 039.** Why:
    - 039 differs from 038 only by the larger fit, which gave +0.0002. That is below the
@@ -733,11 +734,13 @@ joint-fill idea in §9 is tried. **Next phase, in this order:**
      features". Don't put that in the report: +0.0002 is noise.
 
    **Still to do, in this order:**
-   1. **Run exp 041:** XGBoost on 038's features with 038's settings (35% rows, 800 trees,
-      learning rate 0.05, `max_leaves` 127, `min_child_weight` 50, as in exp 030).
-      Validate on A–D.
-   2. **Kaggle:** submit 038 and 041 (max 2 per day). Both must clear VT1 clearly.
-   3. **2018 holdout:** score 038 and 041 once each. Don't score it again.
+   1. ✅ **Run exp 041 (2026-11-05):** XGBoost on 038's features with 038's settings (35%
+      rows, 800 trees, learning rate 0.05, `max_leaves` 127, `min_child_weight` 50, as in
+      exp 030). CV 0.9926, equal to 040 within noise.
+   2. **Kaggle:** submit `submissions/exp_038_dispatch_context.csv` and
+      `submissions/exp_041_xgb_dispatch_context.csv` (max 2 per day; both written and
+      checked 2026-11-05). Both must clear VT1 clearly.
+   3. ✅ **2018 holdout (2026-11-05):** 038 0.9894, 041 0.9894. Don't score it again.
    4. **Notebooks:** `tools/build_notebooks.py` points to 039/040. Change `NOTEBOOKS` to
       the 038 and 041 configs. Add their public scores to `PUBLIC_LB` (it only has
       029/030, so the header says "not yet submitted"). Fill in `TEAM_HEADER` (group
