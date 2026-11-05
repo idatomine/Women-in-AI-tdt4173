@@ -42,10 +42,27 @@ dp\_\allowbreak{}units\_\allowbreak{}x10 & DP: units on (10× start cost) & Dyna
 partner\_\allowbreak{}dp\_\allowbreak{}units & Partner plant: DP units on & Tokke–Vinje coupling & For Tokke units: Vinje's DP schedule, and vice versa (empty for other units) \\
 partner\_\allowbreak{}dp\_\allowbreak{}gap & Partner plant: DP regret & Tokke–Vinje coupling & The partner plant's DP regret \\
 partner\_\allowbreak{}margin & Partner plant: margin & Tokke–Vinje coupling & The partner plant's price − water value margin \\
-lps2\_\allowbreak{}production & LP: plant production share & Relaxed LP & Production of the unit's plant in the LP solution ÷ plant capacity \\
-lps2\_\allowbreak{}unit\_\allowbreak{}on & LP: unit on (fractional) & Relaxed LP & How much of this unit is committed in the LP (0–1), following the plant's priority order \\
-lps2\_\allowbreak{}margin & LP: marginal profit & Relaxed LP & Price − LP water value of the source reservoir + LP water value of the target reservoir \\
-lps2\_\allowbreak{}water\_\allowbreak{}value & LP: hourly water value & Relaxed LP & Shadow price (dual) of water in the source reservoir at that hour \\
-lps2\_\allowbreak{}fill & LP: reservoir fill path & Relaxed LP & Source reservoir fill along the LP's optimal trajectory \\
+lpb\_\allowbreak{}production & LP: plant production share & Relaxed LP & Production of the unit's plant in the LP solution ÷ plant capacity \\
+lpb\_\allowbreak{}unit\_\allowbreak{}on & LP: unit on (fractional) & Relaxed LP & How much of this unit is committed in the LP (0–1), following the plant's priority order \\
+lpb\_\allowbreak{}margin & LP: marginal profit & Relaxed LP & Price − LP water value of the source reservoir + LP water value of the target reservoir \\
+lpb\_\allowbreak{}water\_\allowbreak{}value & LP: hourly water value & Relaxed LP & Shadow price (dual) of water in the source reservoir at that hour \\
+lpb\_\allowbreak{}fill & LP: reservoir fill path & Relaxed LP & Source reservoir fill along the LP's optimal trajectory \\
+ldc\_\allowbreak{}on\_\allowbreak{}mean6 & LP unit on, 6 h mean & LP week context & Rolling mean of the LP's unit on over the 6 hours around this hour \\
+ldc\_\allowbreak{}on\_\allowbreak{}mean24 & LP unit on, 24 h mean & LP week context & Rolling mean of the LP's unit on over the 24 hours around this hour \\
+ldc\_\allowbreak{}on\_\allowbreak{}week & LP unit on, week mean & LP week context & Share of the week this unit is on in the LP \\
+ldc\_\allowbreak{}on\_\allowbreak{}min & LP unit on, week minimum & LP week context & Lowest LP unit on in the week (1 = the LP never turns it off) \\
+ldc\_\allowbreak{}on\_\allowbreak{}max & LP unit on, week maximum & LP week context & Highest LP unit on in the week (0 = the LP never turns it on) \\
+ldc\_\allowbreak{}margin\_\allowbreak{}mean6 & LP margin, 6 h mean & LP week context & Rolling mean of the LP marginal profit over the 6 hours around this hour \\
+ldc\_\allowbreak{}margin\_\allowbreak{}mean24 & LP margin, 24 h mean & LP week context & Rolling mean of the LP marginal profit over the 24 hours around this hour \\
+ldc\_\allowbreak{}margin\_\allowbreak{}week & LP margin, week mean & LP week context & Mean LP marginal profit over the week \\
+ldc\_\allowbreak{}margin\_\allowbreak{}min & LP margin, week minimum & LP week context & Lowest LP marginal profit in the week \\
+ldc\_\allowbreak{}margin\_\allowbreak{}max & LP margin, week maximum & LP week context & Highest LP marginal profit in the week \\
+ldc\_\allowbreak{}margin\_\allowbreak{}positive & Share of hours with LP margin > 0 & LP week context & Share of the week's hours where the LP marginal profit is positive \\
+ldc\_\allowbreak{}production\_\allowbreak{}week & LP plant production, week mean & LP week context & Mean production share of the unit's plant in the LP over the week \\
+ldc\_\allowbreak{}Tokke\_\allowbreak{}production & Tokke: LP production & LP week context & Tokke's LP production share in this hour, given to every unit \\
+ldc\_\allowbreak{}Tokke\_\allowbreak{}margin & Tokke: LP margin & LP week context & Tokke's LP marginal profit in this hour, given to every unit \\
+ldc\_\allowbreak{}Vinje\_\allowbreak{}production & Vinje: LP production & LP week context & Vinje's LP production share in this hour, given to every unit \\
+ldc\_\allowbreak{}Vinje\_\allowbreak{}margin & Vinje: LP margin & LP week context & Vinje's LP marginal profit in this hour, given to every unit \\
+ldc\_\allowbreak{}margin\_\allowbreak{}regret & LP margin: regret of switching & LP week context & As the DP regret, but each unit's on/off path is found on the LP marginal profit (with start costs); in hours of full-output margin, clipped to ±50 \\
 \bottomrule
 \end{longtable}
