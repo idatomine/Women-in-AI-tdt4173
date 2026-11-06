@@ -780,6 +780,16 @@ joint-fill idea in §9 is tried. **Next phase, in this order:**
         limitation.
       - Introduction: the headline numbers.
 
+   **Other model types on the final features (2026-11-05, exps 042–045d).** So that report
+   Table 5.1 compares every model type on the same 56 features, logistic regression (042),
+   random forest (043) and the MLP (044) were re-run on 038's features, and the MLP got a
+   small tuning round, one change at a time (045a wider, 045b deeper, 045c lower learning
+   rate and more epochs, 045d stronger L2). Results (mean A–D): 042 0.9858, 043 0.9894,
+   044 0.9880, best MLP 045c 0.9890 (the only variant that passed, +0.0010 vs 044). All are
+   below 038 (0.9929) in every year, so the final picks stand. The new features helped every
+   model type by 0.001–0.004, so the gain of 038 comes from the information, not from
+   LightGBM. `Report.ipynb` Tables 5.1 and 8.1 now use these runs instead of 033–035.
+
    **If there is not time for 041 and the new notebook check:** fall back to 029/030
    (`tools/build_notebooks.py --legacy`). These notebooks are verified and both clear VT1.
    Choosing 039/040 instead is possible, but the report must then say openly that the

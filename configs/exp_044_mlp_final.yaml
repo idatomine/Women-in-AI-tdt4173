@@ -1,0 +1,36 @@
+name: exp_044_mlp_final
+change: exp 038 with the MLP of exp 035 (128-64) instead of LightGBM (same 56 features)
+compare_to: exp_038_dispatch_context
+features:
+- price_shape
+- calendar
+- water_value
+- hydro
+- unit_static
+- wv_margin
+- scarcity
+- case_economics
+- relaxed_dp
+- tokke_vinje
+- relaxed_lp_best
+- lp_dispatch_context
+drop_features:
+- price
+- price_wkmean
+- wv_up_end
+- wv_up_start
+- wv_dn_end
+- net_wv
+model:
+  type: mlp
+  row_share: 0.35
+  seed: 0
+  params:
+    hidden_layer_sizes:
+    - 128
+    - 64
+    batch_size: 4096
+    learning_rate_init: 0.001
+    max_iter: 30
+    early_stopping: true
+    n_iter_no_change: 4

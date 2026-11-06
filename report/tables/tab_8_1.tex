@@ -3,8 +3,8 @@
 \textbf{} & \textbf{Predictor} & \textbf{mean A–D} & \textbf{holdout 2018} & \textbf{public LB} \\
 \midrule
 Without learning & Economic rule: price − upstream water value & 0.8698 & — & — \\
- & Relaxed LP alone: units on & 0.9411 & — & — \\
- & Relaxed LP alone: margin & 0.9571 & — & — \\
+ & Relaxed LP alone: units on & 0.9587 & — & — \\
+ & Relaxed LP alone: margin & 0.9604 & — & — \\
 Development (LightGBM) & 001: economic features & 0.9593 & — & — \\
  & 002: − raw EUR levels & 0.9642 & — & — \\
  & 007: + reservoir pressure & 0.9652 & — & — \\
@@ -15,12 +15,17 @@ Development (LightGBM) & 001: economic features & 0.9593 & — & — \\
  & 017: LP + minimum flows & 0.9840 & — & 0.99042 \\
  & 021: LP + start costs & 0.9850 & — & 0.99067 \\
  & 024: LP + production curves, spill costs & 0.9865 & — & 0.99099 \\
-Other predictors, final features & Logistic regression (034) & 0.9818 & — & — \\
- & Neural network, MLP (035) & 0.9866 & — & — \\
- & Random forest (033) & 0.9876 & — & — \\
- & Blend of 029 and 030 (50/50) & 0.9913 & — & — \\
-Final models & LightGBM, 029: LP routing fix (final 1) & 0.9912 & 0.9877 & 0.99414 \\
- & XGBoost, 030 (final 2) & 0.9910 & 0.9876 & 0.99429 \\
+ & 029: LP routing fix & 0.9912 & — & 0.99414 \\
+ & 037: LP efficient end value & 0.9919 & — & — \\
+Other predictors, final features & Logistic regression (042) & 0.9858 & — & — \\
+ & Neural network, MLP (044) & 0.9880 & — & — \\
+ & Neural network, MLP tuned (045c) & 0.9890 & — & — \\
+ & Random forest (043) & 0.9894 & — & — \\
+Larger fit, not selected & LightGBM, 039: 60\% rows, 2200 trees & 0.9930 & 0.9896 & 0.99559 \\
+ & XGBoost, 040: 60\% rows, 2200 trees & 0.9927 & 0.9896 & 0.99566 \\
+Final models & LightGBM, 038: + LP week context (final 1) & 0.9929 & 0.9894 & 0.99554 \\
+ & XGBoost, 041 (final 2) & 0.9926 & 0.9894 & 0.99552 \\
+ & Blend of 038 and 041 (50/50) & 0.9929 & — & — \\
 Reference & Highest virtual team (VT1) & — & — & 0.99040 \\
 \bottomrule
 \end{tabular}

@@ -1,0 +1,37 @@
+name: exp_045b_mlp_deep
+change: exp 044 with a third layer (128-64-32, was 128-64)
+compare_to: exp_044_mlp_final
+features:
+- price_shape
+- calendar
+- water_value
+- hydro
+- unit_static
+- wv_margin
+- scarcity
+- case_economics
+- relaxed_dp
+- tokke_vinje
+- relaxed_lp_best
+- lp_dispatch_context
+drop_features:
+- price
+- price_wkmean
+- wv_up_end
+- wv_up_start
+- wv_dn_end
+- net_wv
+model:
+  type: mlp
+  row_share: 0.35
+  seed: 0
+  params:
+    hidden_layer_sizes:
+    - 128
+    - 64
+    - 32
+    batch_size: 4096
+    learning_rate_init: 0.001
+    max_iter: 30
+    early_stopping: true
+    n_iter_no_change: 4
