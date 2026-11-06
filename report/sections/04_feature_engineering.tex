@@ -34,13 +34,13 @@ This is the core of the report. We will tell it as a story in stages, because ea
 \subsection{Overview: the features we kept and the features we tried}\label{sec:4.overview}
 
 % Final text:
-Before going through the stages one by one, Tables~\ref{tab:4.groups} and~\ref{tab:4.tried} give an overview. The features are organised in \emph{feature groups}. A group is a set of features built from the same idea, for example ``how expensive is this hour compared with the rest of the week''. We added and removed whole groups rather than single features, for three reasons. First, the features in a group answer the same question in slightly different ways, so testing the group tests the idea itself. Second, the score varies by up to 0.0008 just from changing the random seed (Section~\ref{sec:3}); with 39 or more features, testing them one at a time would mean hundreds of comparisons, and some would look like improvements by pure luck. Third, a tree model is not harmed much by a few redundant features, because it simply does not split on a feature that adds nothing, so there was little to gain from removing single features.
+Before going through the stages one by one, Tables~\ref{tab:4.groups} and~\ref{tab:4.tried} give an overview. The features are organised in \emph{feature groups}. A group is a set of features built from the same idea, for example ``how expensive is this hour compared with the rest of the week''. We added and removed whole groups rather than single features, for three reasons. First, the features in a group answer the same question in slightly different ways, so testing the group tests the idea itself. Second, the score varies by up to 0.0008 just from changing the random seed (Section~\ref{sec:3}); with up to 56 features, testing them one at a time would mean hundreds of comparisons, and some would look like improvements by pure luck. Third, a tree model is not harmed much by a few redundant features, because it simply does not split on a feature that adds nothing, so there was little to gain from removing single features.
 
-The final models use 11 groups with 39 features in total (Table~\ref{tab:4.groups}). The groups build on each other: the first eight describe the economics of each hour and the state of the reservoirs, the dynamic programme and the Tokke--Vinje coupling add the plants' schedules and how they depend on each other, and the relaxed LP adds the physics of the whole watercourse (it is described as a predictor in Section~\ref{sec:5.lp}). Six features in raw EUR were built but removed from the model (Section~\ref{sec:4.3}). The full list of features with readable names is in Table~\ref{tab:A.1}.
+Both final models, exp 038 (LightGBM) and exp 041 (XGBoost), use the same 12 groups with 56 features in total (Table~\ref{tab:4.groups}). The groups build on each other: the first eight describe the economics of each hour and the state of the reservoirs, the dynamic programme and the Tokke--Vinje coupling add the plants' schedules and how they depend on each other, the relaxed LP adds the physics of the whole watercourse (it is described as a predictor in Section~\ref{sec:5.lp}), and the LP week context gives each hour the LP's view of the rest of the week. Six features in raw EUR were built but removed from the model (Section~\ref{sec:4.3}). The full list of features with readable names is in Table~\ref{tab:A.1}.
 
 \begin{table}[H]
   \centering\small
-  \caption{The feature groups in the final models (exp 029 and 030)}
+  \caption{The feature groups in the final models (exp 038 and 041)}
   \label{tab:4.groups}
   \begin{tabular}{>{\raggedright\arraybackslash}p{0.15\linewidth}r>{\raggedright\arraybackslash}p{0.32\linewidth}>{\raggedright\arraybackslash}p{0.35\linewidth}}
     \toprule
@@ -56,9 +56,10 @@ The final models use 11 groups with 39 features in total (Table~\ref{tab:4.group
     Week economics & 2 & Share of the week's hours with a positive margin, and the total positive margin. & Describes the week as a whole: if most hours are profitable, the unit will run a lot. \\
     Dynamic programme & 6 & For each plant, the most profitable on/off schedule with start costs: on or off, how many units, and the regret (how much is lost by doing the opposite). Solved with the YAML start cost and with 10 times that cost. & Adds start costs, which make units run in blocks instead of switching every hour. The regret acts as a confidence measure. Two cost levels because we did not know the scale SHOP uses. \\
     Tokke--Vinje coupling & 3 & The partner plant's schedule, regret and margin. & Vinje releases into the tiny Vinjevatn, which Tokke must empty, so the two plants run together. \\
-    Relaxed LP & 5 & Production, units on, margin, hourly water value and reservoir fill from the LP of the whole watercourse. & Our simplified copy of SHOP's own optimisation, including reservoir limits and the flow between all reservoirs (Section~\ref{sec:5.lp}). \\
+    Relaxed LP & 5 & Production, units on, margin, hourly water value and reservoir fill from the LP of the whole watercourse. Water left at the end of the week is valued at the plants' best efficiency (Section~\ref{sec:4.lpweek}). & Our simplified copy of SHOP's own optimisation, including reservoir limits and the flow between all reservoirs (Section~\ref{sec:5.lp}). \\
+    LP week context & 17 & Rolling 6~h and 24~h means and the week's mean, minimum and maximum of the LP's unit on and margin; the share of hours with a positive LP margin; Tokke's and Vinje's LP production and margin; and the start-cost regret computed on the LP margin. & Each row sees one hour, but whether a unit runs depends on the rest of the week. These features tell the hour whether it is one of the few good hours or part of a week where the unit runs all the time. \\
     \midrule
-    \textbf{Total} & \textbf{39} & & \\
+    \textbf{Total} & \textbf{56} & & \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -80,12 +81,13 @@ Table~\ref{tab:4.tried} lists every group we tried, why we expected it to help, 
     Dynamic programme (6) & 008 & Adds start costs and realistic on/off blocks per plant. & +0.0011 & \textbf{Kept.} Still needed with the LP ($-0.0011$ without it, exp 014a). \\
     Tokke--Vinje coupling (3) & 009 & Vinje and Tokke are linked by a tiny reservoir and run together. & +0.0126 & \textbf{Kept.} The largest gain before the LP; $-0.0071$ without it (exp 014b). \\
     Cascade (2) & 011 & The same idea as the coupling, for every plant fed by another plant. & +0.0008 & \textbf{Dropped.} Below the threshold. Hogga (fed by Tokke via Bandak) improved by 0.02--0.04 on all folds, but Lio and Kjela were mixed. The LP, added next, models all these connections anyway. \\
-    Relaxed LP (5) & 013 & A simplified copy of SHOP's optimisation over the whole watercourse. & +0.0040 & \textbf{Kept}, and improved in four steps (017, 021, 024, 029: +0.0085 together; Section~\ref{sec:4.9}). \\
+    Relaxed LP (5) & 013 & A simplified copy of SHOP's optimisation over the whole watercourse. & +0.0040 & \textbf{Kept}, and improved in four steps (017, 021, 024, 029: +0.0085 together; Section~\ref{sec:4.9}), then given a better end-of-week value (037, +0.0007; Section~\ref{sec:4.lpweek}). \\
     Real storage lake (3) & 019 & Haukeli's own reservoir data is a constant placeholder, so we used the lake above it instead. & +0.0001 & \textbf{Dropped.} The LP already models the lake above. \\
     Water budget (7) & 025 & How many full-power hours of water the plant must and can use this week. & +0.0010 without LP, +0.0001 with LP & \textbf{Dropped.} It helps only without the LP, which shows that the LP already computes the same information. \\
     Forward margin (6) & 026 & What the rest of the week still offers, which decides whether to use water now or later. & +0.0001 without and with LP & \textbf{Dropped.} No gain even without the LP: the price rank and the DP schedule already describe the rest of the week. \\
     Head (2) & 027 & The height drop sets how much power each m$^3$ of water gives. & 0.0000 without LP, $-0.0002$ with LP & \textbf{Dropped.} No gain even without the LP. Likely reason: the head follows the reservoir fill, which the model already has. \\
     Extra LP outputs (3) & 031 & More detail from the LP for the weakest units (Vinje G2/G3, Kjela). & $\pm 0.0001$ & \textbf{Dropped.} The trees could already recover this from the other LP and DP features. \\
+    LP week context (17) & 038 & Whether a unit runs in one hour depends on the rest of the week, and the LP's weekly profile already includes the reservoir limits and the coupling. & +0.0016 vs 029 (with 037) & \textbf{Kept.} All four folds improve; twice the seed noise (Section~\ref{sec:4.lpweek}). \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -111,7 +113,7 @@ Removing the six features in raw EUR (the price itself, the week's mean price an
 \subsection{Rearranging the margin does not help (exps 005, 006)}\label{sec:4.4}
 
 \begin{disposition}
-Margins in neighbouring hours, rolling means and the length of profitable blocks gave nothing beyond noise. Explanation: a tree model can already combine the existing margin and price-shape features. \emph{Lesson we will state explicitly:} gains come from \emph{new information}, not from re-expressing existing information.
+Margins in neighbouring hours, rolling means and the length of profitable blocks gave nothing beyond noise. Explanation: a tree model can already combine the existing margin and price-shape features. \emph{Lesson we will state explicitly:} gains come from \emph{new information}, not from re-expressing existing information. \emph{Correction found later (Section~\ref{sec:4.lpweek}):} the same kind of summary over the week \emph{did} help when it was computed from the LP's outputs instead of the simple margin. So the lesson must be stated more carefully: rearranging a weak signal does not help, but summarising a strong one can.
 \end{disposition}
 
 % Final text:
@@ -153,7 +155,7 @@ The relaxed LP is described as a predictor in Section~\ref{sec:5.lp}. Here we lo
 
 \emph{Why the earlier groups were still needed.} The ablations showed that the DP ($-0.0011$ without it) and the Tokke--Vinje coupling ($-0.0071$) still helped next to the LP, while reservoir pressure did not (Table~\ref{tab:4.tried}). The first LP version had no start costs and no unit commitment, so the DP's on/off blocks and the coupling's partner schedules added information it did not have. Reservoir pressure did not, because the LP already knows the reservoir limits.
 
-\emph{A failure that taught us something.} Water left at the end of the week will later run through every plant below it on its way to the sea, so its value depends on how much power it can still produce. We tried two ways of pricing that power. In the ``sea'' valuation, all the power the water could produce down to the sea was priced at the water value of the reservoir it is left in. This made the LP much worse: on the LP sanity check, the AUC of units on fell from 0.889 to 0.726 and of the margin from 0.929 to 0.789. In the ``path'' valuation, which we use, the power from each plant on the way is priced at the water value of the reservoir that feeds that plant. Our explanation is that the synthetic water values of neighbouring reservoirs are not consistent with each other, so pricing a whole chain of plants with one reservoir's water value gives the wrong incentives, while the path valuation lets every plant compare the price with its own upstream water value, which is what the labels follow (Section~\ref{sec:2}).
+\emph{A failure that taught us something.} Water left at the end of the week will later run through every plant below it on its way to the sea, so its value depends on how much power it can still produce. We tried two ways of pricing that power. In the ``sea'' valuation, all the power the water could produce down to the sea was priced at the water value of the reservoir it is left in. This made the LP much worse: on a sample of the training weeks, the AUC of its units on fell from 0.889 to 0.726 and of its margin from 0.929 to 0.789. In the ``path'' valuation, which we use, the power from each plant on the way is priced at the water value of the reservoir that feeds that plant. Our explanation is that the synthetic water values of neighbouring reservoirs are not consistent with each other, so pricing a whole chain of plants with one reservoir's water value gives the wrong incentives, while the path valuation lets every plant compare the price with its own upstream water value, which is what the labels follow (Section~\ref{sec:2}).
 
 \subsection{Making the LP more like SHOP (exps 017, 021, 024, 029; 0.9840 → 0.9912)}\label{sec:4.9}
 
@@ -178,6 +180,22 @@ We improved the LP step by step and measured each step separately:
 % Final text:
 
 
+\subsection{Efficient end-of-week value and the LP over the whole week (exps 037, 038; 0.9912 → 0.9929)}\label{sec:4.lpweek}
+
+The last round of feature work made two changes on top of exp 029. Both final models use them.
+
+\emph{Valuing leftover water at the best efficiency (exp 037, +0.0007, all four folds up).} The LP turns the water left at the end of the week into money through the end-of-week water value, which is in EUR/MWh, so it has to convert cubic metres of water into MWh. Until then it used each plant's average efficiency at full load. Exp 037 uses the efficiency of the first and most efficient production segment instead. This is closer to how the water will actually be used later, and it values saved water higher, so the LP holds back more water. Only the value of the leftover water changes; production inside the week is modelled as before. On a sample of the training weeks (every sixth case), the AUC of the LP's units on alone rose from 0.9447 to 0.9597, and of the LP margin alone from 0.9739 to 0.9770. The gain in the learned model (+0.0007) was below the acceptance threshold on its own.
+
+\emph{The LP over the whole week (exp 038, +0.0016 over 029, all four folds up).} Each training row describes one unit in one hour, but whether a unit runs in that hour depends on the rest of the week: a start cost is only worth paying if the unit then runs for a while. The 17 features of the LP week context (Table~\ref{tab:4.groups}) give the hour that context, all computed from the LP's outputs. They include rolling 6~h and 24~h means of the LP's units on and margin, the week's mean, minimum and maximum of both, the share of hours with a positive LP margin, and Tokke's and Vinje's LP production and margin for every unit. The last feature is a start-cost regret: the dynamic programme of Section~\ref{sec:4.6}, run on the LP margin instead of on the simple price minus water value margin.
+
+\emph{Why this worked when the rolling margins of exp 005 did not.} The LP margin already includes the reservoir limits, the coupling between plants and the hourly water values, so its profile over the week carries much more information than the profile of the simple margin. Our best explanation is that this weekly view (is this hour one of the few good ones, or is the unit on all week?) is hard for a tree to rebuild from the values of a single hour.
+
+\emph{The gain is not specific to LightGBM.} The XGBoost twin, exp 041, uses the same 56 features with the settings of exp 030. It gains +0.0017 over exp 030, and all four folds improve. The gain therefore comes from the features, not from one model type.
+
+\emph{Protocol, stated openly.} Exp 037 failed the acceptance rule on its own but was kept and combined with the week context in exp 038, and the week context was never tested without 037. The combined gain of exp 038 (+0.0016) is twice the seed noise (0.0008), and every fold improves. A larger fit on the same features (exp 039: 60\% of the rows and 2200 trees) gave only +0.0002 more, below the noise, so it was not selected (Section~\ref{sec:6}).
+
+\emph{Tried and dropped.} Sixteen production segments in the LP instead of four gave no clear gain on the LP sanity check. A separate model for each unit's share of hours on in the week added +0.00005. Smoothing the predicted probabilities over the hours (median filter, or smoothing of probabilities or logits) gave no gain.
+
 \subsection{What did not help once the LP was in (exps 019, 025–027, 031)}\label{sec:4.10}
 
 \begin{disposition}
@@ -190,7 +208,7 @@ A water budget, forward-looking margins, head proxies, the real storage lake beh
 \subsection{Summary of feature selection}\label{sec:4.11}
 
 \begin{disposition}
-The full experiment log (Table~\ref{tab:B.1} in Appendix~\ref{sec:B}) shows every change, its effect and the decision. The ablation (014a--c) showed that the DP (−0.0011 without it) and the coupling (−0.0071) are still needed next to the LP. Some redundant features remain (e.g.~two versions of the net margin) because tree models tolerate them and removing them did not change the score. Figure~\ref{fig:7.1} shows how much each feature family contributes to the final model.
+The full experiment log (Table~\ref{tab:B.1} in Appendix~\ref{sec:B}) shows every change, its effect and the decision. The ablation (014a--c) showed that the DP (−0.0011 without it) and the coupling (−0.0071) are still needed next to the LP. Some redundant features remain (e.g.~two versions of the net margin) because tree models tolerate them and removing them did not change the score. Both final models, exp 038 (LightGBM) and exp 041 (XGBoost), use the same 56 features in 12 groups (Table~\ref{tab:A.1}); along the accepted changes the mean AUC rose from 0.9593 (exp 001) to 0.9929 (exp 038, Figure~\ref{fig:4.1}). Figure~\ref{fig:7.1} shows how much each feature family contributes to the LightGBM model.
 \end{disposition}
 
 % Final text:
