@@ -14,7 +14,7 @@ import yaml
 
 from src import features, models
 from src.data import ROOT, HOURS, load_data
-from tools.build_notebooks import build_notebook, NOTEBOOKS, LEGACY_NOTEBOOKS
+from tools.build_notebooks import build_notebook, NOTEBOOKS, LEGACY_NOTEBOOKS, PUBLIC_LB
 
 
 class NotebookPipelineTests(unittest.TestCase):
@@ -58,7 +58,7 @@ class NotebookPipelineTests(unittest.TestCase):
         for config_path, cfg in zip(NOTEBOOKS.values(), configs):
             notebook = build_notebook(config_path)
             nbformat.validate(notebook)
-            self.assertIn('not yet submitted', notebook.cells[0].source)
+            self.assertIn(f"public LB {PUBLIC_LB[cfg['name']]}", notebook.cells[0].source)
             module = types.ModuleType('standalone_notebook_check')
             sys.modules[module.__name__] = module
             ns = module.__dict__

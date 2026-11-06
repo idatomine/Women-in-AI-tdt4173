@@ -140,8 +140,8 @@ Features are cached in `features/` and rebuilt automatically when the group's co
 ## Final delivery
 
 The course requires two short notebooks with all code inside (no imports from `src/`).
-At the end, the relevant parts of `src/` are copied into `Short_notebook_1.ipynb` and
-`Short_notebook_2.ipynb`. See `docs/TDT4173_Project_Submission_and_Grading.pdf`.
+At the end, the relevant parts of `src/` are copied into `Short notebook 1.ipynb` and
+`Short notebook 2.ipynb`. See `docs/TDT4173_Project_Submission_and_Grading.pdf`.
 
 ## Setup
 
@@ -154,10 +154,11 @@ On macOS with conda, LightGBM also needs OpenMP: `conda install -c conda-forge l
 
 ## Final submissions and short notebooks
 
-The improved pair is exp 039 (LightGBM) and exp 040 (XGBoost), with the same 56 features
-and matched training settings. `Short_notebook_1.ipynb` and `Short_notebook_2.ipynb`
-reproduce them from the raw data with all code inline, as the course requires. The new
-pair has no verified Kaggle score yet; the previously submitted pair was exp 029/030.
+The final pair is exp 038 (LightGBM, public LB 0.99554) and exp 041 (its XGBoost twin,
+public LB 0.99552), with the same 56 features and matched training settings.
+`Short notebook 1.ipynb` and `Short notebook 2.ipynb` reproduce them from the raw data
+with all code inline, as the course requires. 039/040 (a larger fit) were tested but not
+selected; the previously submitted pair was exp 029/030.
 **Don't edit the notebooks by hand:** they are generated from `src/` and the two configs by
 
 ```bash

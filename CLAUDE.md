@@ -28,14 +28,14 @@ facts, the validation protocol, the feature backlog and the pitfalls.
   - `models.py`: model wrappers; add XGBoost etc. here.
   - `run.py`: runs a config on folds A–D and logs it.
   - `submit.py`: trains on 2015–2022 and writes a checked submission to `submissions/`.
-- `Short_notebook_1.ipynb` / `Short_notebook_2.ipynb`: the course deliverables,
-  **generated** from `src/` by `tools/build_notebooks.py`. Never edit them by hand; rebuild
-  them after changing any code they use. The final picks are **exp 038 (LightGBM, the core
-  model) and exp 041 (its XGBoost twin)**. 039/040 were tested but not
-  selected: their larger fit gave +0.0002 over 038, below the seed noise, so it fails the
-  acceptance rule (BRIEFING §7, item 6). The script currently still points to 039/040 and
-  must be repointed to 038/041. `--legacy` rebuilds the verified 029/030 pair, the fallback
-  if 038/041 can't be finished and checked in time.
+- `Short notebook 1.ipynb` / `Short notebook 2.ipynb`: the course deliverables (names with
+  spaces, as the course requires), **generated** from `src/` by `tools/build_notebooks.py`.
+  Never edit them by hand; rebuild them after changing any code they use. The final picks
+  are **exp 038 (LightGBM, the core model) and exp 041 (its XGBoost twin)**, and the script
+  points to them. 039/040 were tested but not selected: their larger fit gave +0.0002 over
+  038, below the seed noise, so it fails the acceptance rule (BRIEFING §7, item 6).
+  `--legacy` rebuilds the verified 029/030 pair, the fallback if 038/041 can't be finished
+  and checked in time.
 - `Report.ipynb`: the report deliverable (graders don't run it, so save it with outputs).
   Currently a disposition (📝 cells) plus complete figure/table code, run from the repo root
   on the cached features and `experiments/` predictions. Edit it directly. Running it also
