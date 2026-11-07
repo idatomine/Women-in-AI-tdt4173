@@ -67,7 +67,7 @@
 045b\_\allowbreak{}mlp\_\allowbreak{}deep & exp 044 with a third layer (128-64-32, was 128-64) & 0.9874 &  & Drop \\
 045c\_\allowbreak{}mlp\_\allowbreak{}slow\_\allowbreak{}lr & exp 044 with learning rate 0.0003 and up to 60 epochs (was 0.001, 30) & 0.9890 &  & Best MLP (passes vs 044, +0.0010, all folds up) \\
 045d\_\allowbreak{}mlp\_\allowbreak{}l2 & exp 044 with 10x stronger L2 regularisation (alpha 0.001, was 0.0001) & 0.9884 &  & Drop \\
-046\_\allowbreak{}no\_\allowbreak{}next\_\allowbreak{}week\_\allowbreak{}price & exp 038 without the two features that use the price of the week after the case (scarcity\_\allowbreak{}end, next\_\allowbreak{}week\_\allowbreak{}price) & 0.9929 &  & Keep: final model 1 \\
-047\_\allowbreak{}xgb\_\allowbreak{}no\_\allowbreak{}next\_\allowbreak{}week\_\allowbreak{}price & XGBoost twin of exp 046: identical 54 features (no prices from after the case week), settings as exp 041 & 0.9926 &  & Keep: final model 2 (XGBoost twin of 046) \\
+046\_\allowbreak{}no\_\allowbreak{}next\_\allowbreak{}week\_\allowbreak{}price & exp 038 without the two features that use the price of the week after the case (scarcity\_\allowbreak{}end, next\_\allowbreak{}week\_\allowbreak{}price) & 0.9929 & 0.99558 & Keep: final model 1 \\
+047\_\allowbreak{}xgb\_\allowbreak{}no\_\allowbreak{}next\_\allowbreak{}week\_\allowbreak{}price & XGBoost twin of exp 046: identical 54 features (no prices from after the case week), settings as exp 041 & 0.9926 & 0.99555 & Keep: final model 2 (XGBoost twin of 046) \\
 \bottomrule
 \end{longtable}

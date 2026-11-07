@@ -808,8 +808,8 @@ joint-fill idea in §9 is tried. **Next phase, in this order:**
 
    | Exp | Config | A | B | C | D | Mean A–D | vs | 2018 | Public LB |
    |---|---|---|---|---|---|---|---|---|---|
-   | 046 | `configs/exp_046_no_next_week_price.yaml` (LightGBM) | 0.9891 | 0.9952 | 0.9934 | 0.9941 | 0.9929 | +0.0001 vs 038 | 0.9895 | not yet submitted |
-   | 047 | `configs/exp_047_xgb_no_next_week_price.yaml` (XGBoost) | 0.9884 | 0.9951 | 0.9934 | 0.9936 | 0.9926 | +0.0000 vs 041 | 0.9895 | not yet submitted |
+   | 046 | `configs/exp_046_no_next_week_price.yaml` (LightGBM) | 0.9891 | 0.9952 | 0.9934 | 0.9941 | 0.9929 | +0.0001 vs 038 | 0.9895 | 0.99558 |
+   | 047 | `configs/exp_047_xgb_no_next_week_price.yaml` (XGBoost) | 0.9884 | 0.9951 | 0.9934 | 0.9936 | 0.9926 | +0.0000 vs 041 | 0.9895 | 0.99555 |
 
    The score is the same without the two features, so the simpler and more realistic
    models are chosen (the acceptance rule's "among equal scores, the simpler model").
@@ -821,9 +821,8 @@ joint-fill idea in §9 is tried. **Next phase, in this order:**
    29 of 56), so the interpretation does not change.
 
    **Still to do. These steps belong to the teammate who owns the notebooks, done the way she prefers:**
-   1. **Kaggle:** upload both files and note the public scores. Max 2 per day.
-      Add the scores to `journal.md` (Public LB column) and to `public_lb` in
-      `Report.ipynb` (Table 8.1 cell, now `None` with a TODO), then re-run it.
+   1. ✅ **Kaggle (2026-11-07):** both uploaded; public LB 046 0.99558, 047 0.99555
+      (038/041: 0.99554/0.99552). Scores are in `journal.md` and `Report.ipynb`.
    2. **Notebooks (`tools/build_notebooks.py`):**
       - Point `NOTEBOOKS` to `configs/exp_046_no_next_week_price.yaml` and
         `configs/exp_047_xgb_no_next_week_price.yaml`.
