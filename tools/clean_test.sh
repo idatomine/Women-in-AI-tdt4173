@@ -21,8 +21,8 @@ TEST="$HOME/notebook_test"
 LOGS="$HOME/notebook_test_logs"
 FEATURES_OLD="$REPO/features_old_$(date +%Y%m%d_%H%M)"
 
-NAMES=("exp_038_dispatch_context" "exp_041_xgb_dispatch_context")
-NOTEBOOKS=("Short notebook 1.ipynb" "Short notebook 2.ipynb")
+NAMES=("exp_046_no_next_week_price" "exp_047_xgb_no_next_week_price")
+NOTEBOOKS=("Short_notebook_1.ipynb" "Short_notebook_2.ipynb")
 
 step() { echo "[$(date +%H:%M:%S)] $*"; }
 

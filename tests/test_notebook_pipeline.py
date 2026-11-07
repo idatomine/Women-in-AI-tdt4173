@@ -77,7 +77,7 @@ class NotebookPipelineTests(unittest.TestCase):
                     exec(compile(source, '<standalone notebook>', 'exec'), ns)
                 actual, names = ns['build_matrix'](data)
                 self.assertEqual(names, expected_names)
-                self.assertEqual(actual.shape[-1], 56)
+                self.assertEqual(actual.shape[-1], 54)
                 np.testing.assert_allclose(actual, expected, rtol=1e-6, atol=1e-6, equal_nan=True)
                 self.assertEqual(ns['WORKERS'], 1)
                 tiny = copy.deepcopy(cfg['model'])

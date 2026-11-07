@@ -1,4 +1,4 @@
-"""Build "Short notebook 1.ipynb" and "Short notebook 2.ipynb" from the harness code.
+"""Build Short_notebook_1.ipynb and Short_notebook_2.ipynb from the harness code.
 
 The course requires all code inside the notebooks (no separate files). Instead of keeping a
 second copy by hand, this script pastes the modules from src/ that the final configs need
@@ -11,8 +11,8 @@ into notebook cells, so the notebooks always match the code that made the submis
 - progress lines with the elapsed time are printed (prints only, no computation changes).
 
 From the repo root:
-    .venv/bin/python tools/build_notebooks.py           # final 038 / 041 pair
-    .venv/bin/python tools/build_notebooks.py --legacy  # previous 029 / 030 pair
+    .venv/bin/python tools/build_notebooks.py           # final 046 / 047 pair
+    .venv/bin/python tools/build_notebooks.py --legacy  # fallback 038 / 041 pair
 """
 
 import argparse
@@ -26,12 +26,12 @@ import yaml
 ROOT = Path(__file__).resolve().parent.parent
 
 LEGACY_NOTEBOOKS = {
-    "Short notebook 1.ipynb": "configs/exp_029_main_river.yaml",
-    "Short notebook 2.ipynb": "configs/exp_030_xgb_main_river.yaml",
+    "Short_notebook_1.ipynb": "configs/exp_038_dispatch_context.yaml",
+    "Short_notebook_2.ipynb": "configs/exp_041_xgb_dispatch_context.yaml",
 }
 NOTEBOOKS = {
-    "Short notebook 1.ipynb": "configs/exp_038_dispatch_context.yaml",
-    "Short notebook 2.ipynb": "configs/exp_041_xgb_dispatch_context.yaml",
+    "Short_notebook_1.ipynb": "configs/exp_046_no_next_week_price.yaml",
+    "Short_notebook_2.ipynb": "configs/exp_047_xgb_no_next_week_price.yaml",
 }
 TEAM_HEADER = """**Kaggle team:** [36] Women in AI
 
@@ -46,6 +46,8 @@ PUBLIC_LB = {
     "exp_030_xgb_main_river": "0.99429",
     "exp_038_dispatch_context": "0.99554",
     "exp_041_xgb_dispatch_context": "0.99552",
+    "exp_046_no_next_week_price": "0.99558",
+    "exp_047_xgb_no_next_week_price": "0.99555",
 }
 
 # Markdown shown above each pasted module, instead of its docstring (which refers to the
@@ -76,9 +78,9 @@ MARKDOWN = {
         "(price − upstream water value at start + 7 days) is the strong one; the net versions "
         "also subtract the downstream value and are much weaker on their own.",
     "features/scarcity.py":
-        "Scarcity coefficient c in water value ≈ c × mean price, per unit. `scarcity_end` and "
-        "`next_week_price` use the prices of the week after the case; this is not label "
-        "leakage, as the start + 7 days water value already contains that week's mean price.",
+        "Scarcity coefficient c in water value ≈ c × mean price, per unit. Two variants that "
+        "use the price of the week after the case are built but dropped (`DROP_FEATURES`), "
+        "since SHOP did not have that price.",
     "features/case_economics.py":
         "Week-level economics per unit: how much of the week is worth running.",
     "features/relaxed_dp.py":
@@ -287,7 +289,7 @@ def build_notebook(config_path: str) -> nbformat.NotebookNode:
         nbformat.v4.new_markdown_cell("## 4. Feature matrix"),
         nbformat.v4.new_code_cell(
             f"FEATURE_GROUPS = {cfg['features']!r}\n"
-            f"DROP_FEATURES = {cfg.get('drop_features', [])!r}  # raw EUR levels: regime-dependent (2022 vs 2023–24)\n\n\n"
+            f"DROP_FEATURES = {cfg.get('drop_features', [])!r}  # raw EUR levels (regime-dependent, 2022 vs 2023–24) and the two next-week price features (unknown to SHOP)\n\n\n"
             "def build_matrix(data):\n"
             "    \"\"\"All groups side by side, shape (case, unit, hour, feature), float32.\"\"\"\n"
             "    metadata, names = [], []\n"
