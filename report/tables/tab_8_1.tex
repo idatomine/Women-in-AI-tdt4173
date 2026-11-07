@@ -23,9 +23,11 @@ Other predictors, final features & Logistic regression (042) & 0.9858 & — & �
  & Random forest (043) & 0.9894 & — & — \\
 Larger fit, not selected & LightGBM, 039: 60\% rows, 2200 trees & 0.9930 & 0.9896 & 0.99559 \\
  & XGBoost, 040: 60\% rows, 2200 trees & 0.9927 & 0.9896 & 0.99566 \\
-Final models & LightGBM, 038: + LP week context (final 1) & 0.9929 & 0.9894 & 0.99554 \\
- & XGBoost, 041 (final 2) & 0.9926 & 0.9894 & 0.99552 \\
- & Blend of 038 and 041 (50/50) & 0.9929 & — & — \\
+With next week's price, replaced & LightGBM, 038: + LP week context & 0.9929 & 0.9894 & 0.99554 \\
+ & XGBoost, 041 & 0.9926 & 0.9894 & 0.99552 \\
+Final models & LightGBM, 046: 038 without next week's price (final 1) & 0.9929 & 0.9895 & — \\
+ & XGBoost, 047 (final 2) & 0.9926 & 0.9895 & — \\
+ & Blend of 046 and 047 (50/50) & 0.9929 & — & — \\
 Reference & Highest virtual team (VT1) & — & — & 0.99040 \\
 \bottomrule
 \end{tabular}

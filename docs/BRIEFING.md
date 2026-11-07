@@ -18,6 +18,9 @@ Handoff document for whoever (human or Claude session) trains and tunes the mode
 summarises what is **verified in the data** (✅), what comes from **research** (📚, see
 `research/0*.md` for sources), and what is still a **hypothesis** (❓).
 
+**Update 2026-11-07: the final picks are now exp 046 (LightGBM) and exp 047 (XGBoost),
+which replace 038/041. See §7, item 7, for why and what is left (notebooks, Kaggle).**
+
 **Status 2026-10-21:** best model **exp_029_main_river** (`relaxed_lp_shop2`), local CV
 **0.9912** (A–D), public LB **0.99424**. The highest VT ("[VT] Virtual Team 1") is 0.99040
 and VT2 0.99022, so the margin is 0.0038. Base points depend only on the VTs beaten, not on
@@ -789,6 +792,65 @@ joint-fill idea in §9 is tried. **Next phase, in this order:**
    below 038 (0.9929) in every year, so the final picks stand. The new features helped every
    model type by 0.001–0.004, so the gain of 038 comes from the information, not from
    LightGBM. `Report.ipynb` Tables 5.1 and 8.1 now use these runs instead of 033–035.
+
+7. **New final picks: 046 and 047 (2026-11-07). They replace 038 and 041.**
+
+   **Why.** Two of 038's 56 features, `scarcity_end` and `next_week_price` (both in
+   `src/features/scarcity.py`), use the mean price of the 168 hours *after* the case. SHOP
+   did not have that price when it made the decision, and in real use it would not be known
+   either. They are not label leakage, and the price file contains them, but they break the
+   rule "only use what SHOP knew". A reviewer flagged this as the most serious
+   methodological issue in the report. No other feature uses data outside the case week
+   (`offset_hours` is only used in `scarcity.py`).
+
+   **What was run.** The same configs as 038/041, with the two features added to
+   `drop_features` (54 features). Nothing else changed.
+
+   | Exp | Config | A | B | C | D | Mean A–D | vs | 2018 | Public LB |
+   |---|---|---|---|---|---|---|---|---|---|
+   | 046 | `configs/exp_046_no_next_week_price.yaml` (LightGBM) | 0.9891 | 0.9952 | 0.9934 | 0.9941 | 0.9929 | +0.0001 vs 038 | 0.9895 | not yet submitted |
+   | 047 | `configs/exp_047_xgb_no_next_week_price.yaml` (XGBoost) | 0.9884 | 0.9951 | 0.9934 | 0.9936 | 0.9926 | +0.0000 vs 041 | 0.9895 | not yet submitted |
+
+   The score is the same without the two features, so the simpler and more realistic
+   models are chosen (the acceptance rule's "among equal scores, the simpler model").
+   Submissions are written and checked: `submissions/exp_046_no_next_week_price.csv` and
+   `submissions/exp_047_xgb_no_next_week_price.csv` (725 rows each).
+   `experiments/journal.md` has the decisions. `Report.ipynb` now uses 046/047 for the
+   final-model tables (5.1, 8.1, 8.2, A.1, B.1, 6.1). The Section 8 interpretation
+   figures stay on 038: the two removed features had 0.3% each of the gain (rank 25 and
+   29 of 56), so the interpretation does not change.
+
+   **Still to do. These steps belong to the teammate who owns the notebooks, done the way she prefers:**
+   1. **Kaggle:** upload both files and note the public scores. Max 2 per day.
+      Add the scores to `journal.md` (Public LB column) and to `public_lb` in
+      `Report.ipynb` (Table 8.1 cell, now `None` with a TODO), then re-run it.
+   2. **Notebooks (`tools/build_notebooks.py`):**
+      - Point `NOTEBOOKS` to `configs/exp_046_no_next_week_price.yaml` and
+        `configs/exp_047_xgb_no_next_week_price.yaml`.
+      - Add the two public scores to `PUBLIC_LB`.
+      - Rewrite `MARKDOWN["features/scarcity.py"]`, which still says `scarcity_end` and
+        `next_week_price` are used. Suggested wording: "Scarcity coefficient c in water
+        value ≈ c × mean price, per unit. Two variants that use the price of the week after
+        the case are built but dropped (`DROP_FEATURES`), since SHOP did not have that
+        price."
+      - The comment on the `DROP_FEATURES` line ("raw EUR levels: …") now also covers the
+        two next-week features. Update it.
+      - Optional: stop `scarcity.py` from computing the two features at all, instead of
+        building and dropping them. That would change `src/`, so 046/047 must then be
+        re-run to check that the submissions are unchanged.
+      - Update the docstring at the top ("final 038 / 041 pair").
+      - Rebuild.
+   3. **Reproducibility:** run both notebooks in a fresh venv from `requirements.txt`, in a
+      folder with only the notebooks and the raw data. Check that they reproduce
+      `submissions/exp_046_*.csv` / `exp_047_*.csv` byte for byte. Note the runtime, since
+      report §9 states it.
+   4. **Select 046 and 047 on Kaggle** as the two final submissions, before
+      2026-11-08 22:00.
+   5. `CLAUDE.md` and `README.md` still name 038/041 as the final picks. Update them.
+
+   **If 046/047 can't be finished and checked in time:** the 038/041 notebooks are the
+   fallback. The report must then say openly that two features use next week's price, and
+   that exp 046 shows they don't change the score.
 
    **If there is not time for 041 and the new notebook check:** fall back to 029/030
    (`tools/build_notebooks.py --legacy`). These notebooks are verified and both clear VT1.
