@@ -816,9 +816,8 @@ joint-fill idea in §9 is tried. **Next phase, in this order:**
    Submissions are written and checked: `submissions/exp_046_no_next_week_price.csv` and
    `submissions/exp_047_xgb_no_next_week_price.csv` (725 rows each).
    `experiments/journal.md` has the decisions. `Report.ipynb` now uses 046/047 for the
-   final-model tables (5.1, 8.1, 8.2, A.1, B.1, 6.1). The Section 8 interpretation
-   figures stay on 038: the two removed features had 0.3% each of the gain (rank 25 and
-   29 of 56), so the interpretation does not change.
+   final-model tables (5.1, 8.1, 8.2, A.1, B.1, 6.1) and for the Section 7/8
+   interpretation figures and tables (fold B model, per unit, per hour, slow cases).
 
    **Still to do. These steps belong to the teammate who owns the notebooks, done the way she prefers:**
    1. ✅ **Kaggle (2026-11-07):** both uploaded; public LB 046 0.99558, 047 0.99555
